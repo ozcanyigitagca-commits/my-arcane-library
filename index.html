@@ -162,7 +162,40 @@ function renderGoals(){
  const set=(id,a,b)=>{$(id).textContent=a+"/"+b;$(id+"bar").style.width=(b?Math.min(100,a/b*100):0)+"%"};
  set("gMB",mb,goals.monthBooks);set("gMP",mp,goals.monthPages);set("gYB",yb,goals.yearBooks);set("gYP",yp,goals.yearPages)
 }
-function renderRecs(){let cats=[...new Set(books.map(b=>b.category))];let base=cats.length?cats.join(" OR "):"classic fiction";fetch("https://openlibrary.org/search.json?q="+encodeURIComponent(base)+"&limit=12&fields=title,author_name,cover_i,first_publish_year").then(r=>r.json()).then(d=>{let have=new Set(books.map(b=>b.title.toLowerCase()));let a=(d.docs||[]).filter(x=>x.title&&!have.has(x.title.toLowerCase())).slice(0,6);let h=a.map(x=>`<article class="book"><div class="cover">${x.cover_i?`<img src="https://covers.openlibrary.org/b/id/${x.cover_i}-M.jpg">`:"📖"}</div><b>${esc(x.title)}</b><small>${esc((x.author_name||[]).slice(0,2).join(", "))}</small><button onclick="addRec(${JSON.stringify(x.title).replace(/"/g,"&quot;")},${JSON.stringify((x.author_name||[])[0]||"").replace(/"/g,"&quot;")},${JSON.stringify(x.cover_i?`https://covers.openlibrary.org/b/id/${x.cover_i}-L.jpg`:"").replace(/"/g,"&quot;")})">＋ Rafa koy</button></article>`).join("");$("recs").innerHTML=h||'<div class="muted">Öneri bulunamadı.</div>';$("recsAll").innerHTML=h||'<div class="muted">Öneri bulunamadı.</div>'}).catch(()=>{})}
+const turkishRecommendations=[
+ {title:"Tutunamayanlar",author:"Oğuz Atay"},{title:"Kürk Mantolu Madonna",author:"Sabahattin Ali"},
+ {title:"İnce Memed",author:"Yaşar Kemal"},{title:"Saatleri Ayarlama Enstitüsü",author:"Ahmet Hamdi Tanpınar"},
+ {title:"Yaban",author:"Yakup Kadri Karaosmanoğlu"},{title:"Çalıkuşu",author:"Reşat Nuri Güntekin"},
+ {title:"Aylak Adam",author:"Yusuf Atılgan"},{title:"Huzur",author:"Ahmet Hamdi Tanpınar"},
+ {title:"Sinekli Bakkal",author:"Halide Edib Adıvar"},{title:"Devlet Ana",author:"Kemal Tahir"},
+ {title:"Tehlikeli Oyunlar",author:"Oğuz Atay"},{title:"Bir Bilim Adamının Romanı",author:"Oğuz Atay"},
+ {title:"Bereketli Topraklar Üzerinde",author:"Orhan Kemal"},{title:"Anayurt Oteli",author:"Yusuf Atılgan"},
+ {title:"Kuyucaklı Yusuf",author:"Sabahattin Ali"},{title:"Eylül",author:"Mehmet Rauf"}
+];
+function recCard(x){let author=(x.author_name||[])[0]||x.author||"";return `<article class="book"><div class="cover">${x.cover_i?`<img src="https://covers.openlibrary.org/b/id/${x.cover_i}-M.jpg">`:"📖"}</div><b>${esc(x.title)}</b><small>${esc(author)}</small><button onclick="addRec(${JSON.stringify(x.title).replace(/"/g,"&quot;")},${JSON.stringify(author).replace(/"/g,"&quot;")},${JSON.stringify(x.cover_i?`https://covers.openlibrary.org/b/id/${x.cover_i}-L.jpg`:"").replace(/"/g,"&quot;")})">＋ Rafa koy</button></article>`}
+async function renderRecs(){
+ let cats=[...new Set(books.map(b=>b.category).filter(Boolean))];
+ let base=cats.length?cats.join(" OR "):"classic fiction";
+ let have=new Set(books.map(b=>b.title.toLowerCase()));
+ try{
+  let [worldRes,turkish]=await Promise.all([
+   fetch("https://openlibrary.org/search.json?q="+encodeURIComponent(base)+"&limit=18&fields=title,author_name,cover_i,first_publish_year").then(r=>r.json()),
+   Promise.all(turkishRecommendations.map(async x=>{try{let d=await fetch("https://openlibrary.org/search.json?q="+encodeURIComponent('title:"'+x.title+'" author:"'+x.author+'"')+"&limit=1&fields=title,author_name,cover_i,first_publish_year").then(r=>r.json());return d.docs&&d.docs[0]?d.docs[0]:x}catch{return x}}))
+  ]);
+  let world=(worldRes.docs||[]).filter(x=>x.title&&!have.has(x.title.toLowerCase()));
+  let tr=turkish.filter(x=>x.title&&!have.has(x.title.toLowerCase()));
+  let mixed=[];
+  for(let i=0;i<6;i++){if(tr[i])mixed.push(tr[i]);if(world[i])mixed.push(world[i]);if(mixed.length>=6)break}
+  let h=mixed.slice(0,6).map(recCard).join("");
+  $("recs").innerHTML=h||'<div class="muted">Öneri bulunamadı.</div>';
+  $("recsAll").innerHTML=h||'<div class="muted">Öneri bulunamadı.</div>';
+ }catch(e){
+  let tr=turkishRecommendations.filter(x=>!have.has(x.title.toLowerCase())).slice(0,6);
+  let h=tr.map(recCard).join("");
+  $("recs").innerHTML=h||'<div class="muted">Öneri bulunamadı.</div>';
+  $("recsAll").innerHTML=h||'<div class="muted">Öneri bulunamadı.</div>';
+ }
+}
 function addRec(t,a,c){openAdd();$("fTitle").value=t;$("fAuthor").value=a;$("fCover").value=c;$("fPages").value=300}
 function openAdd(){editId=null;$("bookModalTitle").textContent="📖 Kitap Ekle";["fTitle","fAuthor","fPages","fCover","fNotes","bookSearch"].forEach(id=>$(id).value="");$("fRead").value=0;$("fRating").value=0;$("fCategory").value="Roman";$("fStatus").value="unread";$("results").innerHTML="";$("bookModal").classList.add("open")}
 function closeBook(){$("bookModal").classList.remove("open")}
@@ -190,7 +223,7 @@ async function signUp(){if(!db)return $("authMsg").textContent="Önce Supabase U
 async function signIn(){if(!db)return $("authMsg").textContent="Önce Supabase URL/Key tanımlanmalı.";let {error}=await db.auth.signInWithPassword({email:$("authEmail").value.trim(),password:$("authPass").value});$("authMsg").textContent=error?error.message:"Giriş başarılı."}
 async function signOut(){if(db)await db.auth.signOut();else user=null;closeAuth();toast("Çıkış yapıldı")}
 function openSettings(){$("settingsModal").classList.add("open")}function closeSettings(){$("settingsModal").classList.remove("open")}
-function exportData(){let a=document.createElement("a");a.href=URL.createObjectURL(new Blob([JSON.stringify({version:8,books,goals},null,2)],{type:"application/json"}));a.download="my-arcane-library-v8.json";a.click()}
+function exportData(){let a=document.createElement("a");a.href=URL.createObjectURL(new Blob([JSON.stringify({version:9,books,goals},null,2)],{type:"application/json"}));a.download="my-arcane-library-v9.json";a.click()}
 function importData(e){let f=e.target.files[0];if(!f)return;let r=new FileReader();r.onload=()=>{try{let x=JSON.parse(r.result);books=x.books||[];goals=x.goals||goals;saveLocal();renderAll();toast("Yedek yüklendi ✓")}catch{alert("Geçersiz JSON")}};r.readAsText(f)}
 fillCats();init();
 </script>
