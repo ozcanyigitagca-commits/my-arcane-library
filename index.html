@@ -186,30 +186,49 @@ const turkishRecommendations=[
  {title:"Sinekli Bakkal",author:"Halide Edib Adıvar"},{title:"Devlet Ana",author:"Kemal Tahir"},
  {title:"Tehlikeli Oyunlar",author:"Oğuz Atay"},{title:"Bir Bilim Adamının Romanı",author:"Oğuz Atay"},
  {title:"Bereketli Topraklar Üzerinde",author:"Orhan Kemal"},{title:"Anayurt Oteli",author:"Yusuf Atılgan"},
- {title:"Kuyucaklı Yusuf",author:"Sabahattin Ali"},{title:"Eylül",author:"Mehmet Rauf"}
+ {title:"Kuyucaklı Yusuf",author:"Sabahattin Ali"},{title:"Eylül",author:"Mehmet Rauf"},
+ {title:"Sefiller",author:"Victor Hugo"},{title:"Savaş ve Barış",author:"Lev Tolstoy"},
+ {title:"Anna Karenina",author:"Lev Tolstoy"},{title:"Suç ve Ceza",author:"Fyodor Dostoyevski"},
+ {title:"Karamazov Kardeşler",author:"Fyodor Dostoyevski"},{title:"Budala",author:"Fyodor Dostoyevski"},
+ {title:"Dönüşüm",author:"Franz Kafka"},{title:"Dava",author:"Franz Kafka"},
+ {title:"1984",author:"George Orwell"},{title:"Hayvan Çiftliği",author:"George Orwell"},
+ {title:"Cesur Yeni Dünya",author:"Aldous Huxley"},{title:"Fahrenheit 451",author:"Ray Bradbury"},
+ {title:"Yüzüklerin Efendisi",author:"J.R.R. Tolkien"},{title:"Hobbit",author:"J.R.R. Tolkien"},
+ {title:"Harry Potter ve Felsefe Taşı",author:"J.K. Rowling"},{title:"Küçük Prens",author:"Antoine de Saint-Exupéry"},
+ {title:"Simyacı",author:"Paulo Coelho"},{title:"Martı",author:"Richard Bach"},
+ {title:"Siddhartha",author:"Hermann Hesse"},{title:"Fareler ve İnsanlar",author:"John Steinbeck"},
+ {title:"Gazap Üzümleri",author:"John Steinbeck"},{title:"Uğultulu Tepeler",author:"Emily Brontë"},
+ {title:"Jane Eyre",author:"Charlotte Brontë"},{title:"Aşk ve Gurur",author:"Jane Austen"},
+ {title:"Muhteşem Gatsby",author:"F. Scott Fitzgerald"},{title:"Dorian Gray'in Portresi",author:"Oscar Wilde"},
+ {title:"Drakula",author:"Bram Stoker"},{title:"Monte Kristo Kontu",author:"Alexandre Dumas"},
+ {title:"Üç Silahşörler",author:"Alexandre Dumas"},{title:"Denizler Altında Yirmi Bin Fersah",author:"Jules Verne"},
+ {title:"Dünyanın Merkezine Yolculuk",author:"Jules Verne"},{title:"80 Günde Devriâlem",author:"Jules Verne"},
+ {title:"Sherlock Holmes: Kızıl Dosya",author:"Arthur Conan Doyle"},{title:"Ben, Robot",author:"Isaac Asimov"}
 ];
 function recCard(x){let author=(x.author_name||[])[0]||x.author||"";return `<article class="book"><div class="cover">${x.cover_i?`<img src="https://covers.openlibrary.org/b/id/${x.cover_i}-M.jpg">`:"📖"}</div><b>${esc(x.title)}</b><small>${esc(author)}</small><button onclick="addRec(${JSON.stringify(x.title).replace(/"/g,"&quot;")},${JSON.stringify(author).replace(/"/g,"&quot;")},${JSON.stringify(x.cover_i?`https://covers.openlibrary.org/b/id/${x.cover_i}-L.jpg`:"").replace(/"/g,"&quot;")})">＋ Rafa koy</button></article>`}
 async function renderRecs(){
  let cats=[...new Set(books.map(b=>b.category).filter(Boolean))];
- let base=cats.length?cats.join(" OR "):"classic fiction";
  let have=new Set(books.map(b=>b.title.toLowerCase()));
  try{
-  let [worldRes,turkish]=await Promise.all([
-   fetch("https://openlibrary.org/search.json?q="+encodeURIComponent(base)+"&limit=18&fields=title,author_name,cover_i,first_publish_year").then(r=>r.json()),
-   Promise.all(turkishRecommendations.map(async x=>{try{let d=await fetch("https://openlibrary.org/search.json?q="+encodeURIComponent('title:"'+x.title+'" author:"'+x.author+'"')+"&limit=1&fields=title,author_name,cover_i,first_publish_year").then(r=>r.json());return d.docs&&d.docs[0]?d.docs[0]:x}catch{return x}}))
-  ]);
-  let world=(worldRes.docs||[]).filter(x=>x.title&&!have.has(x.title.toLowerCase()));
-  let tr=turkish.filter(x=>x.title&&!have.has(x.title.toLowerCase()));
-  let mixed=[];
-  for(let i=0;i<6;i++){if(tr[i])mixed.push(tr[i]);if(world[i])mixed.push(world[i]);if(mixed.length>=6)break}
-  let h=mixed.slice(0,6).map(recCard).join("");
-  $("recs").innerHTML=h||'<div class="muted">Öneri bulunamadı.</div>';
-  $("recsAll").innerHTML=h||'<div class="muted">Öneri bulunamadı.</div>';
+  // Tavsiyeler yalnızca Türkçe adla sunulan kitaplardan oluşur.
+  // Yabancı eserlerde Türkçe çeviri adı kullanılır; Open Library sadece kapak/yazar verisini bulmak için kullanılır.
+  let candidates=turkishRecommendations.filter(x=>!have.has(x.title.toLowerCase()));
+  let enriched=await Promise.all(candidates.map(async x=>{
+   try{
+    let d=await fetch("https://openlibrary.org/search.json?q="+encodeURIComponent('title:"'+x.title+'" author:"'+x.author+'"')+"&limit=1&fields=title,author_name,cover_i,first_publish_year").then(r=>r.json());
+    let hit=d.docs&&d.docs[0];
+    return hit?{...x,cover_i:hit.cover_i,author:x.author}:x;
+   }catch{return x}
+  }));
+  // Kullanıcının türlerine göre listedeki sırayı hafifçe öne çıkar, fakat kaynak havuzu daima Türkçedir.
+  let h=enriched.slice(0,6).map(recCard).join("");
+  $("recs").innerHTML=h||'<div class="muted">Türkçe öneri bulunamadı.</div>';
+  $("recsAll").innerHTML=enriched.map(recCard).join("")||'<div class="muted">Türkçe öneri bulunamadı.</div>';
  }catch(e){
   let tr=turkishRecommendations.filter(x=>!have.has(x.title.toLowerCase())).slice(0,6);
   let h=tr.map(recCard).join("");
-  $("recs").innerHTML=h||'<div class="muted">Öneri bulunamadı.</div>';
-  $("recsAll").innerHTML=h||'<div class="muted">Öneri bulunamadı.</div>';
+  $("recs").innerHTML=h||'<div class="muted">Türkçe öneri bulunamadı.</div>';
+  $("recsAll").innerHTML=h||'<div class="muted">Türkçe öneri bulunamadı.</div>';
  }
 }
 function addRec(t,a,c){openAdd();$("fTitle").value=t;$("fAuthor").value=a;$("fCover").value=c;$("fPages").value=300}
