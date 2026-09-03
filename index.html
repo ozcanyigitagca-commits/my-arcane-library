@@ -62,7 +62,9 @@ button:hover{border-color:#b46cff;box-shadow:0 0 12px rgba(153,78,255,.18)}
 </style>
 <style id="social-theme">
 .socialGrid{display:grid;grid-template-columns:1fr 1.4fr;gap:14px}.friendList{display:grid;gap:8px}.friendItem{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:11px;border:1px solid rgba(126,73,171,.45);border-radius:9px;background:rgba(17,9,29,.72)}.friendMeta{display:flex;align-items:center;gap:10px;min-width:0}.avatar{width:38px;height:38px;border-radius:50%;display:grid;place-items:center;background:linear-gradient(135deg,#7135d7,#a54fff);box-shadow:0 0 15px rgba(145,67,255,.3);font-size:18px}.friendName{font-weight:700}.friendCode{font-size:11px;color:var(--muted)}.friendActions{display:flex;gap:6px;flex-wrap:wrap}.friendBook{display:grid;grid-template-columns:58px 1fr auto;gap:10px;align-items:center;padding:10px;border:1px solid rgba(126,73,171,.42);border-radius:9px;background:rgba(15,8,25,.76);margin:8px 0}.friendBook img{width:58px;height:78px;object-fit:cover;border-radius:5px}.progressMini{height:6px;background:#09060f;border-radius:8px;overflow:hidden;margin-top:6px}.progressMini i{display:block;height:100%;background:linear-gradient(90deg,#733cff,#c16cff)}.review{padding:10px;border-left:2px solid #a54fff;background:rgba(19,9,31,.72);border-radius:0 8px 8px 0;margin:8px 0}.reviewHead{display:flex;justify-content:space-between;gap:8px}.reviewStars{color:#e8b84f}.codeBox{font-size:20px;letter-spacing:3px;color:var(--gold);padding:12px;text-align:center;border:1px dashed rgba(174,101,255,.6);border-radius:9px;background:rgba(67,28,125,.16)}
-@media(max-width:900px){.socialGrid{grid-template-columns:1fr}.friendBook{grid-template-columns:50px 1fr}.friendBook>.friendActions{grid-column:2}}
+
+.aiGrid{display:grid;grid-template-columns:1.35fr .65fr;gap:14px}.aiChat{min-height:520px;display:flex;flex-direction:column}.aiMessages{flex:1;overflow:auto;padding:8px}.aiMsg{max-width:82%;padding:11px 13px;border:1px solid #5c4325;border-radius:12px;margin:8px 0;line-height:1.5;white-space:pre-wrap}.aiMsg.user{margin-left:auto;background:#33205d;border-color:#7e4fbd}.aiMsg.ai{background:#18100ce8}.aiComposer{display:flex;gap:8px;margin-top:10px}.aiComposer textarea{flex:1;min-height:54px;resize:vertical}.quickPrompts{display:flex;flex-wrap:wrap;gap:7px}.quickPrompts button{font-size:12px}.aiStatus{font-size:12px;color:var(--muted)}
+@media(max-width:900px){.socialGrid{grid-template-columns:1fr}.friendBook{grid-template-columns:50px 1fr}.friendBook>.friendActions{grid-column:2}.aiGrid{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -76,6 +78,7 @@ button:hover{border-color:#b46cff;box-shadow:0 0 12px rgba(153,78,255,.18)}
     <button onclick="showRecommendations()">✨ <span>Tavsiyeler</span></button>
     <button onclick="showHistory()">◷ <span>Okuma Geçmişi</span></button>
     <button onclick="showFriends()">👥 <span>Arkadaşlarım</span></button>
+    <button onclick="showAI()">🔮 <span>Arcane AI</span></button>
     <button onclick="openSettings()">⚙️ <span>Ayarlar</span></button>
   </nav>
   <div class="profile"><b id="userName">Misafir</b><span class="muted" id="userEmail">Yerel mod</span><div class="bar"><i id="xpbar" style="width:0%"></i></div><small id="levelText">Seviye 1 · Çırak</small></div>
@@ -110,6 +113,23 @@ button:hover{border-color:#b46cff;box-shadow:0 0 12px rgba(153,78,255,.18)}
   <div class="socialGrid">
     <div class="panel"><h3>🪄 Arkadaşlık Kodum</h3><p class="muted">Bu kodu arkadaşlarınla paylaş. E-posta adresin görünmez.</p><div class="codeBox" id="myFriendCode">Giriş yapmalısın</div><div class="friendList" id="friendRequests"></div><div class="friendList" id="friendsList"><div class="empty">Henüz arkadaş eklenmedi.</div></div></div>
     <div class="panel"><div class="sectionHead"><h3>📚 Arkadaşlarımın Kitaplıkları</h3><select id="friendSelect" onchange="loadFriendBooks(this.value)"><option value="">Arkadaş seç</option></select></div><div id="friendBooks"><div class="empty">Bir arkadaş seçerek okuduğu kitapları gör.</div></div></div>
+  </div>
+</section>
+<section id="aiSection" style="display:none">
+  <div class="sectionHead"><h2 class="gold">🔮 Arcane AI</h2><span class="aiStatus" id="aiStatus">Kütüphaneni bilen kişisel kitap danışmanın</span></div>
+  <div class="aiGrid">
+    <div class="panel aiChat">
+      <div id="aiMessages" class="aiMessages"><div class="aiMsg ai">Merhaba! Ben Arcane AI. Kütüphanendeki kitapları, okuma durumunu ve puanlarını dikkate alarak sana kitap danışmanlığı yapabilirim. 📚✨
+
+Örneğin: “Suç ve Ceza'yı sevdim, Türkçesi bulunan 5 benzer kitap öner.”</div></div>
+      <div class="aiComposer"><textarea id="aiInput" placeholder="Arcane AI'ya bir şey sor..." onkeydown="aiKey(event)"></textarea><button class="primary" onclick="sendAI()">Gönder ➤</button></div>
+    </div>
+    <div class="panel"><h3>✨ Hızlı Sorular</h3><div class="quickPrompts">
+      <button onclick="askAI('Kütüphanemi analiz et ve okuma zevkimi özetle.')">Kütüphanemi analiz et</button>
+      <button onclick="askAI('Bana Türkçesi bulunan 5 kitap öner ve nedenlerini yaz.')">5 kitap öner</button>
+      <button onclick="askAI('Okuma hedeflerime göre bana bir aylık okuma planı hazırla.')">Okuma planı</button>
+      <button onclick="askAI('Okuduğum kitaplara göre hangi türlere daha çok ilgi duyduğumu söyle.')">Zevkimi keşfet</button>
+    </div><hr style="border-color:#382715"><p class="muted">Arcane AI, giriş yaptığında çalışır. Kitaplığındaki veriler kişiselleştirme amacıyla AI isteğine gönderilir.</p></div>
   </div>
 </section>
 </div></main></div>
@@ -248,8 +268,13 @@ async function deleteBook(id){if(!confirm("Kitap silinsin mi?"))return;books=boo
 async function quickReadFor(id,n){let b=books.find(x=>x.id===id);if(!b)return;let old=b.read;b.read=Math.min(b.pages,b.read+n);b.status=b.read===b.pages?"finished":"reading";b.updated=iso();if(b.read>old)b.history=[...(b.history||[]),{date:b.updated,pages:b.read-old}];saveLocal();await cloudUpsert(b);closeDetail();renderAll();toast(`+${b.read-old} sayfa kaydedildi 📖`)}
 async function quickRead(n){let b=books.find(x=>x.status==="reading")||books.find(x=>x.status==="unread");if(!b)return alert("Önce bir kitap ekle.");await quickReadFor(b.id,n)}
 function openGoals(){$("gmB").value=goals.monthBooks;$("gmP").value=goals.monthPages;$("gyB").value=goals.yearBooks;$("gyP").value=goals.yearPages;$("goalModal").classList.add("open")}function closeGoals(){$("goalModal").classList.remove("open")}function saveGoals(){goals={monthBooks:+$("gmB").value||0,monthPages:+$("gmP").value||0,yearBooks:+$("gyB").value||0,yearPages:+$("gyP").value||0};saveLocal();closeGoals();renderGoals();toast("Hedefler kaydedildi 🎯")}
-function showSection(s,btn){["home","books","recommend","history","friends"].forEach(x=>$(x+"Section").style.display=x===s?"block":"none");document.querySelectorAll("nav button").forEach(x=>x.classList.remove("active"));if(btn)btn.classList.add("active");if(s==="history")showHistory();if(s==="friends")loadSocial()}
+function showSection(s,btn){["home","books","recommend","history","friends","ai"].forEach(x=>$(x+"Section").style.display=x===s?"block":"none");document.querySelectorAll("nav button").forEach(x=>x.classList.remove("active"));if(btn)btn.classList.add("active");if(s==="history")showHistory();if(s==="friends")loadSocial()}
 function showFriends(){showSection("friends")}
+function showAI(){showSection("ai")}
+function aiKey(e){if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();sendAI()}}
+function addAIMsg(text,who){let d=document.createElement("div");d.className="aiMsg "+who;d.textContent=text;$("aiMessages").appendChild(d);$("aiMessages").scrollTop=$("aiMessages").scrollHeight;return d}
+function askAI(text){$("aiInput").value=text;showAI();sendAI()}
+async function sendAI(){let input=$("aiInput"),message=input.value.trim();if(!message)return;if(!user||!db){addAIMsg("Arcane AI için önce Hesap bölümünden giriş yapmalısın.","ai");return}addAIMsg(message,"user");input.value="";$("aiStatus").textContent="Arcane AI düşünüyor…";let loading=addAIMsg("…","ai");try{let {data,error}=await db.functions.invoke("arcane-ai",{body:{message}});if(error)throw error;loading.textContent=data?.answer||"Yanıt alınamadı.";$("aiStatus").textContent="Hazır"}catch(e){loading.textContent="AI bağlantısında bir sorun oluştu. Supabase Edge Function ve OPENAI_API_KEY ayarını kontrol et.";$("aiStatus").textContent="Bağlantı hatası";console.error(e)}}
 function showRecommendations(){showSection("recommend");renderRecs()}
 function showHistory(){showSection("history");let arr=books.flatMap(b=>(b.history||[]).map(h=>({title:b.title,...h}))).sort((a,b)=>new Date(b.date)-new Date(a.date));$("historyList").innerHTML=arr.length?arr.map(x=>`<div class="panel" style="margin:8px 0"><b>${esc(x.title)}</b> · +${x.pages} sayfa <span class="muted">${new Date(x.date).toLocaleString("tr-TR")}</span></div>`).join(""):"<div class='empty'>Henüz okuma kaydı yok.</div>"}
 function renderFriendsEmpty(){if($("myFriendCode"))$("myFriendCode").textContent=user?"Yükleniyor…":"Giriş yapmalısın";if($("friendsList"))$("friendsList").innerHTML='<div class="empty">Arkadaşlarını görmek için giriş yap.</div>';if($("friendRequests"))$("friendRequests").innerHTML="";if($("friendSelect"))$("friendSelect").innerHTML='<option value="">Arkadaş seç</option>';if($("friendBooks"))$("friendBooks").innerHTML='<div class="empty">Bir arkadaş seçerek kitaplarını gör.</div>'}
@@ -276,7 +301,7 @@ async function signUp(){if(!db)return $("authMsg").textContent="Önce Supabase U
 async function signIn(){if(!db)return $("authMsg").textContent="Önce Supabase URL/Key tanımlanmalı.";let {error}=await db.auth.signInWithPassword({email:$("authEmail").value.trim(),password:$("authPass").value});$("authMsg").textContent=error?error.message:"Giriş başarılı."}
 async function signOut(){if(db)await db.auth.signOut();else user=null;closeAuth();toast("Çıkış yapıldı")}
 function openSettings(){$("settingsModal").classList.add("open")}function closeSettings(){$("settingsModal").classList.remove("open")}
-function exportData(){let a=document.createElement("a");a.href=URL.createObjectURL(new Blob([JSON.stringify({version:9,books,goals},null,2)],{type:"application/json"}));a.download="my-arcane-library-v9.json";a.click()}
+function exportData(){let a=document.createElement("a");a.href=URL.createObjectURL(new Blob([JSON.stringify({version:10,books,goals},null,2)],{type:"application/json"}));a.download="my-arcane-library-v10.json";a.click()}
 function importData(e){let f=e.target.files[0];if(!f)return;let r=new FileReader();r.onload=()=>{try{let x=JSON.parse(r.result);books=x.books||[];goals=x.goals||goals;saveLocal();renderAll();toast("Yedek yüklendi ✓")}catch{alert("Geçersiz JSON")}};r.readAsText(f)}
 fillCats();init();
 </script>
