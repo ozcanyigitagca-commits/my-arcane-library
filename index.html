@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>My Arcane Library v8 — Sanal Kütüphane</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{--gold:#e8bd63;--gold2:#9b7130;--text:#f6eddb;--muted:#b8aa95;--glass:#100c09c9;--line:#76572d;--green:#78d49a}
+*{box-sizing:border-box}html,body{margin:0;min-height:100%;font-family:Georgia,"Times New Roman",serif;background:#090604;color:var(--text)}
+body{background-image:linear-gradient(90deg,#080604e8 0,#080604a0 18%,#08060415 45%,#08060455 100%),url("library-bg.png");background-size:cover;background-position:center top;background-attachment:fixed}
+button,input,select,textarea{font:inherit;color:var(--text);background:#16100cdb;border:1px solid #62491f;border-radius:8px;padding:10px 12px}button{cursor:pointer}button:hover{border-color:var(--gold)}.gold{color:var(--gold)}
+.app{display:grid;grid-template-columns:250px 1fr;min-height:100vh;background:linear-gradient(90deg,#070503b8 0,transparent 30%)}
+aside{padding:18px 14px;background:#0b0806c9;border-right:1px solid #5a431f;backdrop-filter:blur(8px);position:sticky;top:0;height:100vh}
+.brand{display:flex;gap:10px;align-items:center;padding:6px 8px 22px}.brandIcon{font-size:34px}.brand h1{font-size:20px;margin:0;color:var(--gold)}.brand small{color:var(--muted)}
+nav button{display:block;width:100%;text-align:left;background:transparent;border-color:transparent;margin:4px 0;padding:11px 13px}nav button.active,nav button:hover{background:#2a1c0fcf;border-color:#5b421d}
+.profile{position:absolute;left:14px;right:14px;bottom:16px;border:1px solid #5d451f;border-radius:11px;padding:12px;background:#130e0bd9}.profile b{display:block}.bar{height:7px;background:#080604;border-radius:9px;overflow:hidden;margin-top:7px}.bar i{display:block;height:100%;background:var(--gold)}
+main{min-width:0}.topbar{height:70px;display:flex;align-items:center;gap:12px;padding:12px 22px;border-bottom:1px solid #654a22;background:#090704a8;backdrop-filter:blur(8px);position:sticky;top:0;z-index:10}.search{flex:1;max-width:650px}.search input{width:100%;background:#17110dd9}.spacer{flex:1}.online{font-size:12px;color:var(--green)}.content{padding:22px;max-width:1500px;margin:auto}.hero{min-height:350px;display:grid;grid-template-columns:1fr 330px;gap:20px;align-items:center}.welcome{text-align:center;padding:35px;text-shadow:0 2px 12px #000}.welcome h2{font-size:34px;margin:0 0 12px}.welcome p{font-size:17px;color:#e2d5c0}.panel{background:linear-gradient(145deg,#17100bdc,#0b0806d9);border:1px solid #63491f;border-radius:13px;box-shadow:0 10px 30px #0007;padding:16px;backdrop-filter:blur(8px)}.panel h3{margin:0 0 12px;color:var(--gold);font-size:16px}.goal{margin:12px 0}.goalrow{display:flex;justify-content:space-between;font-size:12px}.actions{display:flex;gap:9px;justify-content:center;flex-wrap:wrap;margin-top:18px}.primary{background:#765222;border-color:var(--gold)}.danger{color:#ff9b9b}.quick{display:flex;gap:7px;flex-wrap:wrap}.quick button{flex:1;min-width:70px}
+.section{margin-top:20px}.sectionHead{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}.sectionHead h2{margin:0;color:var(--gold);font-size:19px}.books{display:grid;grid-template-columns:repeat(auto-fill,minmax(155px,1fr));gap:12px}.book{min-height:275px;padding:10px;border-radius:8px;background:linear-gradient(145deg,#291b10,#0f0a07);border:1px solid #60441e;box-shadow:0 8px 18px #0008;cursor:pointer;display:flex;flex-direction:column;justify-content:space-between}.book:hover{transform:translateY(-3px);border-color:var(--gold)}.cover{height:175px;background:#34251a;display:flex;align-items:center;justify-content:center;overflow:hidden;border-radius:5px}.cover img{width:100%;height:100%;object-fit:cover}.book b{font-size:14px;line-height:1.15}.book small{color:var(--muted)}.stars{color:var(--gold);font-size:13px}.status{font-size:10px;color:var(--green)}.bottomGrid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}.statgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.stat{padding:12px;background:#20150edb;border:1px solid #49351b;border-radius:8px}.stat b{font-size:22px;color:var(--gold);display:block}.muted{color:var(--muted);font-size:12px}
+.modal{display:none;position:fixed;inset:0;background:#000b;z-index:50;align-items:center;justify-content:center;padding:18px}.modal.open{display:flex}.box{width:min(760px,100%);max-height:92vh;overflow:auto;background:#130e0bdd;border:1px solid #745624;border-radius:14px;padding:20px}.form{display:grid;gap:7px}.form input,.form select,.form textarea{width:100%}.modalActions{display:flex;justify-content:flex-end;gap:8px;margin-top:14px}.result{display:grid;grid-template-columns:50px 1fr auto;gap:9px;padding:8px;border:1px solid #4c381d;border-radius:8px;margin-top:7px;background:#21160fd9;cursor:pointer}.result img{width:50px;height:68px;object-fit:cover}.tabs{display:flex;gap:7px;flex-wrap:wrap}.tabs button{background:#170f0ad9}.empty{text-align:center;color:var(--muted);padding:30px}.toast{position:fixed;right:20px;bottom:20px;background:#21160e;border:1px solid var(--gold);padding:12px 16px;border-radius:9px;display:none;z-index:100}
+@media(max-width:1000px){.app{grid-template-columns:76px 1fr}aside{padding:10px 7px}.brand div:not(.brandIcon),nav button span,.profile{display:none}.brand{justify-content:center}.hero{grid-template-columns:1fr}.bottomGrid{grid-template-columns:1fr 1fr}}
+@media(max-width:650px){.app{display:block}aside{height:auto;position:relative;display:flex;align-items:center}.brand{padding:0}.brandIcon{font-size:28px}nav{display:flex;overflow:auto;gap:4px}nav button{white-space:nowrap;width:auto}.profile{display:none}.topbar{height:auto;flex-wrap:wrap}.search{order:3;max-width:none;flex-basis:100%}.content{padding:12px}.bottomGrid{grid-template-columns:1fr}.books{grid-template-columns:repeat(2,1fr)}.cover{height:150px}}
+</style>
+</head>
+<body>
+<div class="app">
+<aside>
+  <div class="brand"><div class="brandIcon">📖</div><div><h1>My Arcane Library v8</h1><small>Sanal Kütüphane</small></div></div>
+  <nav>
+    <button class="active" onclick="showSection('home',this)">🏛️ <span>Kütüphane</span></button>
+    <button onclick="showSection('books',this)">📚 <span>Kitaplarım</span></button>
+    <button onclick="openGoals()">🎯 <span>Hedefler</span></button>
+    <button onclick="showRecommendations()">✨ <span>Tavsiyeler</span></button>
+    <button onclick="showHistory()">◷ <span>Okuma Geçmişi</span></button>
+    <button onclick="openSettings()">⚙️ <span>Ayarlar</span></button>
+  </nav>
+  <div class="profile"><b id="userName">Misafir</b><span class="muted" id="userEmail">Yerel mod</span><div class="bar"><i id="xpbar" style="width:0%"></i></div><small id="levelText">Seviye 1 · Çırak</small></div>
+</aside>
+
+<main>
+<div class="topbar"><div class="online" id="syncState">● Yerel</div><div class="search"><input id="search" placeholder="Kitap, yazar, ISBN ara..." oninput="renderBooks()"></div><button onclick="openAuth()">👤 Hesap</button><button onclick="openAdd()">＋ Kitap</button></div>
+<div class="content">
+
+<section id="homeSection">
+<div class="hero">
+<div class="welcome"><h2>Hoş geldin, <span class="gold" id="welcomeName">Kütüphaneci</span>!</h2><p>“Bir kitap, içinde yaşadığın dünyayı değiştirebilir.”</p><p class="gold">Bugün kütüphanende hangi rafı keşfedeceksin?</p><div class="actions"><button class="primary" onclick="openAdd()">📖 Kitap Ekle</button><button onclick="quickRead(25)">＋25 Sayfa</button><button onclick="openGoals()">🎯 Hedeflerim</button></div></div>
+<div class="panel"><h3>🎯 HEDEFLERİM</h3><div class="goal"><div class="goalrow"><span>Aylık Kitap</span><span id="gMB">0/3</span></div><div class="bar"><i id="gMBbar"></i></div></div><div class="goal"><div class="goalrow"><span>Aylık Sayfa</span><span id="gMP">0/500</span></div><div class="bar"><i id="gMPbar"></i></div></div><div class="goal"><div class="goalrow"><span>Yıllık Kitap</span><span id="gYB">0/24</span></div><div class="bar"><i id="gYBbar"></i></div></div><div class="goal"><div class="goalrow"><span>Yıllık Sayfa</span><span id="gYP">0/6000</span></div><div class="bar"><i id="gYPbar"></i></div></div><button style="width:100%;margin-top:8px" onclick="openGoals()">Tüm Hedefleri Gör</button></div>
+</div>
+
+<div class="section panel"><div class="sectionHead"><h2>📚 Rafımdaki Kitaplar</h2><div class="tabs"><button onclick="setFilter('all')">Tümü</button><button onclick="setFilter('reading')">Okuyorum</button><button onclick="setFilter('unread')">Okuyacağım</button><button onclick="setFilter('finished')">Okudum</button></div></div><div id="booksHome" class="books"></div></div>
+
+<div class="bottomGrid section">
+<div class="panel"><h3>🔥 OKUMA SERİSİ</h3><div style="font-size:31px" class="gold" id="streak">0 gün</div><div class="muted">Bugün birkaç sayfa okuyarak serini koru.</div><div class="quick" style="margin-top:12px"><button onclick="quickRead(10)">+10</button><button onclick="quickRead(25)">+25</button><button onclick="quickRead(50)">+50</button></div></div>
+<div class="panel"><h3>📊 OKUMA İSTATİSTİKLERİ</h3><div class="statgrid"><div class="stat"><b id="statBooks">0</b><span class="muted">Toplam Kitap</span></div><div class="stat"><b id="statPages">0</b><span class="muted">Okunan Sayfa</span></div><div class="stat"><b id="statFinished">0</b><span class="muted">Biten</span></div><div class="stat"><b id="statRating">0</b><span class="muted">Ort. Puan</span></div></div></div>
+<div class="panel"><h3>✨ KÜTÜPHANECİ NOTU</h3><p id="quote" style="line-height:1.6">Her raf, okunmayı bekleyen başka bir dünyadır.</p><button onclick="showRecommendations()">Tavsiye Al →</button></div>
+</div>
+
+<div class="section panel"><div class="sectionHead"><h2>✨ Önerilen Kitaplar</h2><button onclick="showRecommendations()">Tümünü Gör →</button></div><div id="recs" class="books"></div></div>
+</section>
+
+<section id="booksSection" style="display:none"><div class="panel"><div class="sectionHead"><h2>📚 Kitaplarım</h2><button class="primary" onclick="openAdd()">＋ Kitap Ekle</button></div><div id="booksAll" class="books"></div></div></section>
+<section id="recommendSection" style="display:none"><div class="panel"><h2 class="gold">✨ Sana Özel Tavsiyeler</h2><p class="muted">Kategorilerine göre Open Library üzerinden öneriler.</p><div id="recsAll" class="books"></div></div></section>
+<section id="historySection" style="display:none"><div class="panel"><h2 class="gold">◷ Okuma Geçmişim</h2><div id="historyList"></div></div></section>
+</div></main></div>
+
+<!-- Add/Edit -->
+<div class="modal" id="bookModal"><div class="box"><h2 class="gold" id="bookModalTitle">📖 Kitap Ekle</h2><div class="form">
+<label>Kitap adı</label><input id="fTitle"><label>Yazar</label><input id="fAuthor"><label>Toplam sayfa</label><input id="fPages" type="number" min="1"><label>Okunan sayfa</label><input id="fRead" type="number" min="0" value="0"><label>Kategori</label><select id="fCategory"></select><label>Durum</label><select id="fStatus"><option value="unread">Okuyacağım</option><option value="reading">Okuyorum</option><option value="finished">Okudum</option></select><label>⭐ Puan</label><input id="fRating" type="number" min="0" max="10" step=".5" value="0"><label>Kapak URL</label><input id="fCover" placeholder="Otomatik arama yapabilir veya boş bırakabilirsin"><label>Not</label><textarea id="fNotes" rows="3"></textarea><hr style="border-color:#382715"><div><input id="bookSearch" placeholder="Kitap adı / ISBN ile kapak ve bilgi bul" style="width:70%"><button onclick="findBook()">🔎 Bul</button></div><div id="results"></div></div><div class="modalActions"><button onclick="closeBook()">İptal</button><button class="primary" onclick="saveBook()">Kaydet</button></div></div></div>
+
+<div class="modal" id="authModal"><div class="box"><h2 class="gold">👤 Çevrimiçi Hesap</h2><p class="muted">Hesap açarsan kitapların ve okuma geçmişin cihazlar arasında senkronize edilir.</p><div class="form"><label>E-posta</label><input id="authEmail" type="email"><label>Şifre</label><input id="authPass" type="password"><label>Ad</label><input id="authName" placeholder="Kütüphaneci adın"></div><div class="modalActions"><button onclick="closeAuth()">Kapat</button><button onclick="signUp()">Kayıt Ol</button><button class="primary" onclick="signIn()">Giriş Yap</button><button onclick="signOut()">Çıkış</button></div><div id="authMsg" class="muted" style="margin-top:10px"></div></div></div>
+
+<div class="modal" id="goalModal"><div class="box"><h2 class="gold">🎯 Hedefler</h2><div class="form"><label>Aylık kitap</label><input id="gmB" type="number"><label>Aylık sayfa</label><input id="gmP" type="number"><label>Yıllık kitap</label><input id="gyB" type="number"><label>Yıllık sayfa</label><input id="gyP" type="number"></div><div class="modalActions"><button onclick="closeGoals()">Kapat</button><button class="primary" onclick="saveGoals()">Kaydet</button></div></div></div>
+
+<div class="modal" id="settingsModal"><div class="box"><h2 class="gold">⚙️ Ayarlar</h2><p>Çevrimiçi bağlantı için Supabase ayarlarını burada tanımlayabilirsin. Dosyanın içindeki <b>SUPABASE_URL</b> ve <b>SUPABASE_KEY</b> alanlarını kendi projenle doldurman yeterlidir.</p><p class="muted">Bu v8 ayrıca çevrimdışı çalışır; bağlantı yoksa verileri tarayıcıda tutar.</p><div class="modalActions"><button onclick="closeSettings()">Kapat</button><button onclick="exportData()">💾 JSON Yedek</button><button onclick="document.getElementById('importFile').click()">↩ Yükle</button><input id="importFile" type="file" accept=".json" hidden onchange="importData(event)"></div></div></div>
+
+<div class="modal" id="detailModal"><div class="box"><div id="detailBody"></div><div class="modalActions"><button onclick="closeDetail()">Kapat</button></div></div></div>
+<div class="toast" id="toast"></div>
+
+<script>
+const SUPABASE_URL="https://khmcgiklbnogsamvqjrj.supabase.co";
+const SUPABASE_KEY="sb_publishable_CB8jHFX4E0TFQ_HVb_9RkQ_grX4Gwi6";
+const CATS=["Klasikler","Roman","Fantastik","Bilim Kurgu","Polisiye","Felsefe","Tarih","Bilim","Biyografi","Çocuk","Diğer"];
+let db=null, user=null, books=[], editId=null, filter="all", goals={monthBooks:3,monthPages:500,yearBooks:24,yearPages:6000}, bookResults=[];
+
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));
+function toast(s){$("toast").textContent=s;$("toast").style.display="block";clearTimeout(window.tt);window.tt=setTimeout(()=>$("toast").style.display="none",1800)}
+function key(){return user?"arcane_v8_books_"+user.id:"arcane_v8_guest"}
+function saveLocal(){localStorage.setItem(key(),JSON.stringify(books));localStorage.setItem("arcane_v8_goals_"+(user?.id||"guest"),JSON.stringify(goals))}
+function loadLocal(){try{books=JSON.parse(localStorage.getItem(key())||"[]")}catch{books=[]}try{goals=JSON.parse(localStorage.getItem("arcane_v8_goals_"+(user?.id||"guest"))||JSON.stringify(goals))}catch{}}
+function iso(){return new Date().toISOString()}
+function day(d){let x=new Date(d);return x.toISOString().slice(0,10)}
+function pagesRead(){return books.reduce((n,b)=>n+(+b.read||0),0)}
+function streak(){let s=new Set(books.flatMap(b=>b.history||[]).map(x=>day(x.date))),d=new Date();d.setHours(0,0,0,0);let n=0;while(s.has(day(d))){n++;d.setDate(d.getDate()-1)}return n}
+function xp(){return books.length*25+books.filter(b=>b.status==="finished").length*100+pagesRead()}
+function level(){let x=xp(),lv=Math.max(1,Math.floor(x/300)+1);return {lv,name:lv>=20?"Baş Kütüphaneci":lv>=10?"Arşivci":lv>=5?"Kâtip":"Çırak",pct:(x%300)/3}}
+function fillCats(){["fCategory"].forEach(id=>$(id).innerHTML=CATS.map(c=>`<option>${c}</option>`).join(""))}
+async function init(){
+ fillCats();
+ if(SUPABASE_URL.startsWith("http")&&!SUPABASE_KEY.startsWith("YOUR_")){db=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);$("syncState").textContent="● Çevrimiçi";const {data}=await db.auth.getSession();user=data.session?.user||null;db.auth.onAuthStateChange(async(_e,s)=>{user=s?.user||null;await afterUser()})} 
+ await afterUser(); renderAll();
+}
+async function afterUser(){loadLocal();if(user){$("userName").textContent=user.user_metadata?.name||user.email?.split("@")[0]||"Kütüphaneci";$("userEmail").textContent=user.email; if(db)await pullCloud();}else{$("userName").textContent="Misafir";$("userEmail").textContent=db?"Giriş yapılmadı":"Yerel mod"}renderAll()}
+async function pullCloud(){if(!db||!user)return;let {data,error}=await db.from("books").select("*").eq("user_id",user.id).order("updated_at",{ascending:false});if(!error&&data){books=data.map(r=>({id:r.id,title:r.title,author:r.author||"",pages:r.pages||1,read:r.read||0,category:r.category||"Roman",status:r.status||"unread",rating:r.rating||0,cover:r.cover||"",notes:r.notes||"",fav:!!r.fav,history:r.history||[],updated:r.updated_at}));saveLocal()}}
+async function cloudUpsert(b){if(!db||!user)return;await db.from("books").upsert({id:b.id,user_id:user.id,title:b.title,author:b.author,pages:b.pages,read:b.read,category:b.category,status:b.status,rating:b.rating,cover:b.cover,notes:b.notes,fav:b.fav,history:b.history||[],updated_at:b.updated})}
+async function cloudDelete(id){if(db&&user)await db.from("books").delete().eq("id",id).eq("user_id",user.id)}
+function renderAll(){renderBooks();renderGoals();renderStats();renderStreak();renderProfile();renderRecs()}
+function setFilter(x){filter=x;renderBooks()}
+function renderBooks(){
+ let q=($("search")?.value||"").toLowerCase(),list=books.filter(b=>(b.title+" "+b.author).toLowerCase().includes(q)&&(filter==="all"||b.status===filter));
+ list.sort((a,b)=>a.title.localeCompare(b.title,"tr"));
+ const html=list.length?list.map(bookCard).join(""):`<div class="empty">Bu rafta kitap yok.</div>`;
+ $("booksHome").innerHTML=html;$("booksAll").innerHTML=html;
+}
+function bookCard(b){let p=b.pages?Math.min(100,Math.round(b.read/b.pages*100)):0;return `<article class="book" onclick="openDetail('${b.id}')"><div class="cover">${b.cover?`<img src="${esc(b.cover)}" onerror="this.parentNode.textContent='📖'">`:"📖"}</div><div><b>${esc(b.title)}</b><br><small>${esc(b.author||"Bilinmeyen")}</small></div><div><span class="status">${b.status==="finished"?"✓ Okudum":b.status==="reading"?"● Okuyorum":"○ Okuyacağım"}</span><br><small>${b.read}/${b.pages} sayfa · ${p}%</small><br><span class="stars">${"★".repeat(Math.round((b.rating||0)/2))}${"☆".repeat(5-Math.round((b.rating||0)/2))}</span></div></article>`}
+function renderStats(){let avg=books.length?(books.reduce((n,b)=>n+(+b.rating||0),0)/books.length).toFixed(1):"0";$("statBooks").textContent=books.length;$("statPages").textContent=pagesRead().toLocaleString("tr-TR");$("statFinished").textContent=books.filter(b=>b.status==="finished").length;$("statRating").textContent=avg}
+function renderStreak(){$("streak").textContent=streak()+" gün 🔥"}
+function renderProfile(){let l=level();$("levelText").textContent=`Seviye ${l.lv} · ${l.name}`;$("xpbar").style.width=l.pct+"%"}
+function renderGoals(){
+ let n=new Date(),m=n.getMonth(),y=n.getFullYear(),finished=books.filter(b=>b.status==="finished");
+ let mb=finished.filter(b=>{let d=new Date(b.updated);return d.getMonth()===m&&d.getFullYear()===y}).length;
+ let mp=books.flatMap(b=>b.history||[]).filter(h=>{let d=new Date(h.date);return d.getMonth()===m&&d.getFullYear()===y}).reduce((n,h)=>n+(+h.pages||0),0);
+ let yb=finished.filter(b=>new Date(b.updated).getFullYear()===y).length,yp=books.flatMap(b=>b.history||[]).filter(h=>new Date(h.date).getFullYear()===y).reduce((n,h)=>n+(+h.pages||0),0);
+ const set=(id,a,b)=>{$(id).textContent=a+"/"+b;$(id+"bar").style.width=(b?Math.min(100,a/b*100):0)+"%"};
+ set("gMB",mb,goals.monthBooks);set("gMP",mp,goals.monthPages);set("gYB",yb,goals.yearBooks);set("gYP",yp,goals.yearPages)
+}
+function renderRecs(){let cats=[...new Set(books.map(b=>b.category))];let base=cats.length?cats.join(" OR "):"classic fiction";fetch("https://openlibrary.org/search.json?q="+encodeURIComponent(base)+"&limit=12&fields=title,author_name,cover_i,first_publish_year").then(r=>r.json()).then(d=>{let have=new Set(books.map(b=>b.title.toLowerCase()));let a=(d.docs||[]).filter(x=>x.title&&!have.has(x.title.toLowerCase())).slice(0,6);let h=a.map(x=>`<article class="book"><div class="cover">${x.cover_i?`<img src="https://covers.openlibrary.org/b/id/${x.cover_i}-M.jpg">`:"📖"}</div><b>${esc(x.title)}</b><small>${esc((x.author_name||[]).slice(0,2).join(", "))}</small><button onclick="addRec(${JSON.stringify(x.title).replace(/"/g,"&quot;")},${JSON.stringify((x.author_name||[])[0]||"").replace(/"/g,"&quot;")},${JSON.stringify(x.cover_i?`https://covers.openlibrary.org/b/id/${x.cover_i}-L.jpg`:"").replace(/"/g,"&quot;")})">＋ Rafa koy</button></article>`).join("");$("recs").innerHTML=h||'<div class="muted">Öneri bulunamadı.</div>';$("recsAll").innerHTML=h||'<div class="muted">Öneri bulunamadı.</div>'}).catch(()=>{})}
+function addRec(t,a,c){openAdd();$("fTitle").value=t;$("fAuthor").value=a;$("fCover").value=c;$("fPages").value=300}
+function openAdd(){editId=null;$("bookModalTitle").textContent="📖 Kitap Ekle";["fTitle","fAuthor","fPages","fCover","fNotes","bookSearch"].forEach(id=>$(id).value="");$("fRead").value=0;$("fRating").value=0;$("fCategory").value="Roman";$("fStatus").value="unread";$("results").innerHTML="";$("bookModal").classList.add("open")}
+function closeBook(){$("bookModal").classList.remove("open")}
+function openDetail(id){let b=books.find(x=>x.id===id);if(!b)return;let p=b.pages?Math.round(b.read/b.pages*100):0;$("detailBody").innerHTML=`<h2 class="gold">${esc(b.title)}</h2><p>${esc(b.author)}</p>${b.cover?`<img src="${esc(b.cover)}" style="width:150px;max-height:220px;object-fit:cover;border-radius:6px">`:""}<p>${b.read}/${b.pages} sayfa · ${p}% · ${b.status==="finished"?"Okundu":b.status==="reading"?"Okunuyor":"Okunacak"} · ⭐ ${b.rating||"—"}</p><p class="muted">${esc(b.notes||"Not yok.")}</p><div class="modalActions"><button onclick="editBook('${b.id}')">✏️ Düzenle</button><button onclick="quickReadFor('${b.id}',25)">+25 Sayfa</button><button class="danger" onclick="deleteBook('${b.id}')">Sil</button></div>`;$("detailModal").classList.add("open")}
+function closeDetail(){$("detailModal").classList.remove("open")}
+function editBook(id){closeDetail();let b=books.find(x=>x.id===id);editId=id;$("bookModalTitle").textContent="📚 Kitabı Düzenle";$("fTitle").value=b.title;$("fAuthor").value=b.author;$("fPages").value=b.pages;$("fRead").value=b.read;$("fCategory").value=b.category;$("fStatus").value=b.status;$("fRating").value=b.rating;$("fCover").value=b.cover||"";$("fNotes").value=b.notes||"";$("bookModal").classList.add("open")}
+async function saveBook(){
+ let t=$("fTitle").value.trim(),p=+$("fPages").value,r=Math.max(0,Math.min(+$("fRead").value||0,p));if(!t||!p)return alert("Kitap adı ve toplam sayfa gerekli.");
+ let old=editId?books.find(b=>b.id===editId):null,b=old||{id:crypto.randomUUID(),history:[],fav:false,created:iso()};
+ b.title=t;b.author=$("fAuthor").value.trim();b.pages=p;b.read=r;b.category=$("fCategory").value;b.status=r===p?"finished":$("fStatus").value;b.rating=+$("fRating").value||0;b.cover=$("fCover").value.trim();b.notes=$("fNotes").value;b.updated=iso();
+ if(old){let d=r-old.read;if(d>0)b.history=[...(b.history||[]),{date:b.updated,pages:d}]}else if(r>0)b.history=[{date:b.updated,pages:r}];
+ if(!old)books.push(b);saveLocal();await cloudUpsert(b);closeBook();renderAll();toast("Kitap kaydedildi ✨")
+}
+async function deleteBook(id){if(!confirm("Kitap silinsin mi?"))return;books=books.filter(b=>b.id!==id);saveLocal();await cloudDelete(id);closeDetail();renderAll();toast("Kitap silindi")}
+async function quickReadFor(id,n){let b=books.find(x=>x.id===id);if(!b)return;let old=b.read;b.read=Math.min(b.pages,b.read+n);b.status=b.read===b.pages?"finished":"reading";b.updated=iso();if(b.read>old)b.history=[...(b.history||[]),{date:b.updated,pages:b.read-old}];saveLocal();await cloudUpsert(b);closeDetail();renderAll();toast(`+${b.read-old} sayfa kaydedildi 📖`)}
+async function quickRead(n){let b=books.find(x=>x.status==="reading")||books.find(x=>x.status==="unread");if(!b)return alert("Önce bir kitap ekle.");await quickReadFor(b.id,n)}
+function openGoals(){$("gmB").value=goals.monthBooks;$("gmP").value=goals.monthPages;$("gyB").value=goals.yearBooks;$("gyP").value=goals.yearPages;$("goalModal").classList.add("open")}function closeGoals(){$("goalModal").classList.remove("open")}function saveGoals(){goals={monthBooks:+$("gmB").value||0,monthPages:+$("gmP").value||0,yearBooks:+$("gyB").value||0,yearPages:+$("gyP").value||0};saveLocal();closeGoals();renderGoals();toast("Hedefler kaydedildi 🎯")}
+function showSection(s,btn){["home","books","recommend","history"].forEach(x=>$(x+"Section").style.display=x===s?"block":"none");document.querySelectorAll("nav button").forEach(x=>x.classList.remove("active"));if(btn)btn.classList.add("active");if(s==="history")showHistory()}
+function showRecommendations(){showSection("recommend");renderRecs()}
+function showHistory(){showSection("history");let arr=books.flatMap(b=>(b.history||[]).map(h=>({title:b.title,...h}))).sort((a,b)=>new Date(b.date)-new Date(a.date));$("historyList").innerHTML=arr.length?arr.map(x=>`<div class="panel" style="margin:8px 0"><b>${esc(x.title)}</b> · +${x.pages} sayfa <span class="muted">${new Date(x.date).toLocaleString("tr-TR")}</span></div>`).join(""):"<div class='empty'>Henüz okuma kaydı yok.</div>"}
+async function findBook(){let q=$("bookSearch").value.trim()||$("fTitle").value.trim();if(!q)return;let d=await fetch("https://openlibrary.org/search.json?q="+encodeURIComponent(q)+"&limit=8&fields=title,author_name,cover_i,number_of_pages_median,isbn,first_publish_year").then(r=>r.json());bookResults=d.docs||[];$("results").innerHTML=bookResults.map((b,i)=>{let c=b.cover_i?`https://covers.openlibrary.org/b/id/${b.cover_i}-M.jpg`:"";return `<div class="result" onclick="chooseResult(${i})">${c?`<img src="${c}">`:"📖"}<div><b>${esc(b.title)}</b><br><span class="muted">${esc((b.author_name||[]).join(", "))}</span><br><span class="muted">${b.first_publish_year||""} · ${b.number_of_pages_median||"?"} sayfa</span></div><span>Seç</span></div>`}).join("")}
+function chooseResult(i){let b=bookResults[i];$("fTitle").value=b.title||"";$("fAuthor").value=(b.author_name||[])[0]||"";$("fPages").value=b.number_of_pages_median||300;$("fCover").value=b.cover_i?`https://covers.openlibrary.org/b/id/${b.cover_i}-L.jpg`:"";$("results").innerHTML='<span class="muted">✓ Kitap bilgileri seçildi</span>'}
+function openAuth(){$("authMsg").textContent="";$("authModal").classList.add("open")}function closeAuth(){$("authModal").classList.remove("open")}
+async function signUp(){if(!db)return $("authMsg").textContent="Önce Supabase URL/Key tanımlanmalı.";let e=$("authEmail").value.trim(),p=$("authPass").value,n=$("authName").value.trim();let {error}=await db.auth.signUp({email:e,password:p,options:{data:{name:n}}});$("authMsg").textContent=error?error.message:"Kayıt başarılı. E-posta doğrulaması gerekiyorsa gelen kutunu kontrol et."}
+async function signIn(){if(!db)return $("authMsg").textContent="Önce Supabase URL/Key tanımlanmalı.";let {error}=await db.auth.signInWithPassword({email:$("authEmail").value.trim(),password:$("authPass").value});$("authMsg").textContent=error?error.message:"Giriş başarılı."}
+async function signOut(){if(db)await db.auth.signOut();else user=null;closeAuth();toast("Çıkış yapıldı")}
+function openSettings(){$("settingsModal").classList.add("open")}function closeSettings(){$("settingsModal").classList.remove("open")}
+function exportData(){let a=document.createElement("a");a.href=URL.createObjectURL(new Blob([JSON.stringify({version:8,books,goals},null,2)],{type:"application/json"}));a.download="my-arcane-library-v8.json";a.click()}
+function importData(e){let f=e.target.files[0];if(!f)return;let r=new FileReader();r.onload=()=>{try{let x=JSON.parse(r.result);books=x.books||[];goals=x.goals||goals;saveLocal();renderAll();toast("Yedek yüklendi ✓")}catch{alert("Geçersiz JSON")}};r.readAsText(f)}
+fillCats();init();
+</script>
+</body></html>
