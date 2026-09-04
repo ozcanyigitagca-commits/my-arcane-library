@@ -1,29 +1,24 @@
-MY ARCANE LIBRARY v8
-====================
+MY ARCANE LIBRARY v11
 
-Supabase bağlantısı bu paket için yapılandırıldı.
+V11, V10 üzerindeki Arcane AI backendini OpenAI yerine Google Gemini API ile çalıştırır.
+Gemini ücretsiz katmanda desteklenen modeller kullanılabilir; varsayılan model: gemini-3.7-flash.
 
-Proje:
-https://khmcgiklbnogsamvqjrj.supabase.co
+KURULUM
+1) Google AI Studio üzerinden bir Gemini API anahtarı oluştur.
+2) Supabase Dashboard > Edge Functions > arcane-ai > Secrets bölümünde GEMINI_API_KEY adında secret oluştur ve anahtarı buraya gir.
+3) İstersen GEMINI_MODEL secret'ını gemini-3.7-flash olarak bırakabilirsin; kod zaten bu modeli varsayılan kullanır.
+4) supabase/functions/arcane-ai/index.ts dosyasını Edge Function olarak deploy et.
+5) Siteyi Ctrl+F5 ile yenile ve Arcane AI'yı test et.
 
-İçerik:
-- index.html
-- library-bg.png
-- supabase.sql
-- README.txt
+GÜVENLİK
+Gemini API anahtarını index.html içine koyma ve kullanıcıya açık frontend koduna yazma. Anahtar yalnızca Supabase Edge Function secret olarak tutulmalıdır.
 
-Online kullanım:
-1) index.html ve library-bg.png dosyalarını bir statik hosting'e yükle.
-2) Siteyi aç.
-3) Hesap > Kayıt Ol ile kullanıcı oluştur.
-4) E-posta doğrulaması açıksa gelen kutundan hesabı doğrula.
-5) Giriş yaptıktan sonra kitaplar Supabase'de hesabına özel saklanır.
-
-Güvenlik:
-- Veritabanında RLS aktif.
-- Kullanıcı yalnızca kendi books kayıtlarını okuyup değiştirebilir.
-- HTML içine service_role anahtarı konulmamıştır; yalnızca publishable key kullanılmıştır.
-
-Not:
-- Site internet olmadan da yerel modda açılabilir.
-- Kitap kapakları ve kitap araması Open Library üzerinden gelir.
+V11'DE KORUNANLAR
+- Kütüphane arayüzü ve arka plan
+- Supabase giriş / kayıt
+- Kitap ekleme ve takip
+- Arkadaş sistemi ve arkadaş kitaplıkları
+- Puan / yorum sistemi
+- Türkçe kitap önerileri
+- İstatistikler ve okuma geçmişi
+- Arcane AI arayüzü
