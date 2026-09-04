@@ -1,25 +1,25 @@
-MY ARCANE LIBRARY v12 — GEMINI / SMART LIBRARIAN
+MY ARCANE LIBRARY V12 — GEMINI SMART LIBRARIAN FIXED
 
-V12 includes:
-- Arcane AI 2.0 chat using Gemini through Supabase Edge Function
-- AI Health Check with real Gemini connectivity diagnostics
-- AI-powered personalized 5-book recommendations with add-to-shelf buttons
-- Local library insight profile
-- Advanced statistics: genres, last 14 days, top-rated books, completion rate
-- Existing Supabase Auth, books sync, friends, friend requests and reviews preserved
-- JSON backup/restore updated to v12
-- Gemini API key remains server-side as GEMINI_API_KEY
+V12.1 fixes the Arcane AI response quality issue:
+- Direct answers: no unwanted greetings unless the user greets first.
+- Uses the full library context with concrete stats.
+- Chat history is sent to Gemini for continuity.
+- No more incomplete one-line generic answers by prompt design.
+- Real AI health check performs a tiny Gemini request.
+- Personalized recommendations use structured JSON output.
+- Recommendation cards are filtered against the user's existing library.
+- Gemini 3.6 Flash is the default model and sampling temperature is not sent.
+- Detailed API errors are returned to the UI without exposing the API key.
 
 SUPABASE
 Project: khmcgiklbnogsamvqjrj
-Edge Function: arcane-ai (deployed separately)
+Edge Function: arcane-ai
+The function is deployed with JWT verification enabled.
 
 SECRET
-Create Supabase Edge Function Secret:
+Create:
 GEMINI_API_KEY = your Google AI Studio API key
 Optional:
-GEMINI_MODEL = gemini-2.5-flash
+GEMINI_MODEL = gemini-3.6-flash
 
-IMPORTANT
 Never put GEMINI_API_KEY into index.html.
-If AI fails, open Arcane AI and press “AI Bağlantısını Test Et”; V12 shows the real Gemini HTTP/error message.
