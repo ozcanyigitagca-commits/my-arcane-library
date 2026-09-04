@@ -19,6 +19,8 @@ main{min-width:0}.topbar{height:70px;display:flex;align-items:center;gap:12px;pa
 .modal{display:none;position:fixed;inset:0;background:#000b;z-index:50;align-items:center;justify-content:center;padding:18px}.modal.open{display:flex}.box{width:min(760px,100%);max-height:92vh;overflow:auto;background:#130e0bdd;border:1px solid #745624;border-radius:14px;padding:20px}.form{display:grid;gap:7px}.form input,.form select,.form textarea{width:100%}.modalActions{display:flex;justify-content:flex-end;gap:8px;margin-top:14px}.result{display:grid;grid-template-columns:50px 1fr auto;gap:9px;padding:8px;border:1px solid #4c381d;border-radius:8px;margin-top:7px;background:#21160fd9;cursor:pointer}.result img{width:50px;height:68px;object-fit:cover}.tabs{display:flex;gap:7px;flex-wrap:wrap}.tabs button{background:#170f0ad9}.empty{text-align:center;color:var(--muted);padding:30px}.toast{position:fixed;right:20px;bottom:20px;background:#21160e;border:1px solid var(--gold);padding:12px 16px;border-radius:9px;display:none;z-index:100}
 @media(max-width:1000px){.app{grid-template-columns:76px 1fr}aside{padding:10px 7px}.brand div:not(.brandIcon),nav button span,.profile{display:none}.brand{justify-content:center}.hero{grid-template-columns:1fr}.bottomGrid{grid-template-columns:1fr 1fr}}
 @media(max-width:650px){.app{display:block}aside{height:auto;position:relative;display:flex;align-items:center}.brand{padding:0}.brandIcon{font-size:28px}nav{display:flex;overflow:auto;gap:4px}nav button{white-space:nowrap;width:auto}.profile{display:none}.topbar{height:auto;flex-wrap:wrap}.search{order:3;max-width:none;flex-basis:100%}.content{padding:12px}.bottomGrid{grid-template-columns:1fr}.books{grid-template-columns:repeat(2,1fr)}.cover{height:150px}}
+
+.filmMeta{margin-top:5px;padding:5px 7px;border-radius:6px;background:rgba(104,52,180,.18);border:1px solid rgba(174,101,255,.28);font-size:11px;color:#d9c5ff}.filmBadge{display:inline-block;margin-bottom:6px;padding:3px 7px;border-radius:999px;background:#3b2164;color:#eadcff;font-size:10px}.filmGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(175px,1fr));gap:14px}.filmCard{min-height:360px;padding:10px;border-radius:9px;background:linear-gradient(145deg,#291b10,#0f0a07);border:1px solid #60441e;box-shadow:0 8px 18px #0008;display:flex;flex-direction:column;gap:7px}.filmCard:hover{transform:translateY(-3px);border-color:var(--gold)}.filmCard .cover{height:190px}.filmCard .filmWhy{font-size:12px;line-height:1.45;color:#cfc3d9;min-height:48px}.filmEmpty{padding:18px;border:1px dashed #62477f;border-radius:8px;color:var(--muted)}
 </style>
 <style id="v9-theme">
 :root{
@@ -78,6 +80,7 @@ button:hover{border-color:#b46cff;box-shadow:0 0 12px rgba(153,78,255,.18)}
     <button onclick="showSection('books',this)">📚 <span>Kitaplarım</span></button>
     <button onclick="openGoals()">🎯 <span>Hedefler</span></button>
     <button onclick="showRecommendations()">✨ <span>Tavsiyeler</span></button>
+    <button onclick="showFilmRecommendations()">🎬 <span>Filmi Olan Kitaplar</span></button>
     <button onclick="showHistory()">◷ <span>Okuma Geçmişi</span></button>
     <button onclick="showStats()">📊 <span>İstatistikler</span></button>
     <button onclick="showFriends()">👥 <span>Arkadaşlarım</span></button>
@@ -110,6 +113,11 @@ button:hover{border-color:#b46cff;box-shadow:0 0 12px rgba(153,78,255,.18)}
 
 <section id="booksSection" style="display:none"><div class="panel"><div class="sectionHead"><h2>📚 Kitaplarım</h2><button class="primary" onclick="openAdd()">＋ Kitap Ekle</button></div><div id="booksAll" class="books"></div></div></section>
 <section id="recommendSection" style="display:none"><div class="panel"><h2 class="gold">✨ Sana Özel Tavsiyeler</h2><p class="muted">Kategorilerine göre Open Library üzerinden öneriler.</p><div id="recsAll" class="books"></div></div></section>
+<section id="filmSection" style="display:none">
+  <div class="sectionHead"><div><h2 class="gold">🎬 Filmi Olan Kitaplar</h2><p class="muted">Kitaplığındaki zevklere yakın, sinema veya TV uyarlaması bulunan kitaplardan seçilmiş öneriler.</p></div><button onclick="renderFilmRecommendations()">🔄 Yenile</button></div>
+  <div class="panel" style="margin-bottom:14px"><h3>📚 Kütüphanendeki Uyarlamalar</h3><p class="muted">Rafında bulunan ve filme/TV'ye uyarlanmış eserler burada görünür.</p><div id="myFilmBooks" class="filmGrid"></div></div>
+  <div class="panel"><h3>✨ Sana Özel Filmli Kitap Tavsiyeleri</h3><p class="muted">Okuma + film gecesi yapmak istersen doğrudan değerlendirebileceğin kitaplar.</p><div id="filmRecs" class="filmGrid"></div></div>
+</section>
 <section id="historySection" style="display:none"><div class="panel"><h2 class="gold">◷ Okuma Geçmişim</h2><div id="historyList"></div></div></section>
 <section id="statsSection" style="display:none">
   <div class="sectionHead"><h2 class="gold">📊 Kütüphane İstatistikleri</h2><button onclick="askAI('Kütüphanemdeki istatistikleri yorumla ve bana 3 uygulanabilir öneri ver.')">🔮 AI ile Yorumla</button></div>
@@ -195,7 +203,7 @@ async function afterUser(){loadLocal();friends=[];friendBooks=[];if(user){$("use
 async function pullCloud(){if(!db||!user)return;let {data,error}=await db.from("books").select("*").eq("user_id",user.id).order("updated_at",{ascending:false});if(!error&&data){books=data.map(r=>({id:r.id,title:r.title,author:r.author||"",pages:r.pages||1,read:r.read||0,category:r.category||"Roman",status:r.status||"unread",rating:r.rating||0,cover:r.cover||"",notes:r.notes||"",fav:!!r.fav,history:r.history||[],updated:r.updated_at}));saveLocal()}}
 async function cloudUpsert(b){if(!db||!user)return;await db.from("books").upsert({id:b.id,user_id:user.id,title:b.title,author:b.author,pages:b.pages,read:b.read,category:b.category,status:b.status,rating:b.rating,cover:b.cover,notes:b.notes,fav:b.fav,history:b.history||[],updated_at:b.updated})}
 async function cloudDelete(id){if(db&&user)await db.from("books").delete().eq("id",id).eq("user_id",user.id)}
-function renderAll(){renderBooks();renderGoals();renderStats();renderStreak();renderProfile();renderRecs()}
+function renderAll(){renderBooks();renderGoals();renderStats();renderStreak();renderProfile();renderRecs();renderFilmRecommendations()}
 function setFilter(x){filter=x;renderBooks()}
 function renderBooks(){
  let q=($("search")?.value||"").toLowerCase(),list=books.filter(b=>(b.title+" "+b.author).toLowerCase().includes(q)&&(filter==="all"||b.status===filter));
@@ -268,6 +276,41 @@ async function renderRecs(){
   $("recsAll").innerHTML=h||'<div class="muted">Türkçe öneri bulunamadı.</div>';
  }
 }
+const filmBookRecommendations=[
+ {title:"Charlie'nin Çikolata Fabrikası",author:"Roald Dahl",film:"Charlie and the Chocolate Factory",year:"2005",why:"Fantastik, eğlenceli ve görsel dünyası güçlü bir kitap-film ikilisi."},
+ {title:"Matilda",author:"Roald Dahl",film:"Matilda",year:"1996",why:"Kısa, eğlenceli ve filmden sonra kitap üzerine konuşmak için çok uygun."},
+ {title:"Heidi",author:"Johanna Spyri",film:"Heidi",year:"2015",why:"Sıcak, aile odaklı ve doğa atmosferi güçlü bir okuma + film seçimi."},
+ {title:"Küçük Prens",author:"Antoine de Saint-Exupéry",film:"The Little Prince",year:"2015",why:"Kitabın duygusunu animasyonla yeniden keşfetmek için güzel bir seçenek."},
+ {title:"Pollyanna",author:"Eleanor H. Porter",film:"Pollyanna",year:"1960",why:"İyimserlik ve karakter gelişimi üzerine sakin bir kitap-film akşamı için ideal."},
+ {title:"Peter Pan",author:"J. M. Barrie",film:"Peter Pan",year:"2003",why:"Macera ve fantastik atmosfer isteyenler için klasik bir seçim."},
+ {title:"Denizler Altında Yirmi Bin Fersah",author:"Jules Verne",film:"20,000 Leagues Under the Sea",year:"1954",why:"Klasik bilimkurgu/macera hissini sinema uyarlamasıyla tamamlıyor."},
+ {title:"Oz Büyücüsü",author:"L. Frank Baum",film:"The Wizard of Oz",year:"1939",why:"Klasik fantastik edebiyat ile sinema tarihinin en tanınan uyarlamalarından biri."},
+ {title:"Coraline",author:"Neil Gaiman",film:"Coraline",year:"2009",why:"Karanlık masal havasını seviyorsan kitap ve stop-motion film birlikte çok iyi gider."},
+ {title:"Hugo Cabret",author:"Brian Selznick",film:"Hugo",year:"2011",why:"Kitap, çizimler ve sinema tarihini bir araya getiren farklı bir deneyim."},
+ {title:"Kutup Ekspresi",author:"Chris Van Allsburg",film:"The Polar Express",year:"2004",why:"Kısa bir okuma sonrası ailece film izlemek için çok uygun."},
+ {title:"Yüzüklerin Efendisi",author:"J. R. R. Tolkien",film:"The Lord of the Rings",year:"2001–2003",why:"Uzun soluklu fantastik dünyayı kitaplardan filmlere taşıyan güçlü bir seri."},
+ {title:"Hobbit",author:"J. R. R. Tolkien",film:"The Hobbit",year:"2012–2014",why:"Daha hafif bir Tolkien başlangıcı ve ardından film üçlemesi için iyi seçim."},
+ {title:"Harry Potter ve Felsefe Taşı",author:"J. K. Rowling",film:"Harry Potter and the Philosopher's Stone",year:"2001",why:"Kitap-film karşılaştırması yapmak için en keyifli başlangıçlardan biri."},
+ {title:"Aşk ve Gurur",author:"Jane Austen",film:"Pride & Prejudice",year:"2005",why:"Karakter ilişkileri ve dönem atmosferini filmle birlikte değerlendirmek için harika."},
+ {title:"Dorian Gray'in Portresi",author:"Oscar Wilde",film:"Dorian Gray",year:"2009",why:"Gotik atmosfer ve ahlaki temaları kitap ile film arasında karşılaştırabilirsin."},
+ {title:"Drakula",author:"Bram Stoker",film:"Bram Stoker's Dracula",year:"1992",why:"Gotik edebiyat seviyorsan karanlık bir kitap-film gecesi için güçlü aday."},
+ {title:"Jane Eyre",author:"Charlotte Brontë",film:"Jane Eyre",year:"2011",why:"Atmosfer, karakter ve romantik gerilim açısından kitap-film karşılaştırmasına çok uygun."},
+ {title:"Muhteşem Gatsby",author:"F. Scott Fitzgerald",film:"The Great Gatsby",year:"2013",why:"Kısa bir klasik ve ardından görsel açıdan güçlü bir film deneyimi."},
+ {title:"Sefiller",author:"Victor Hugo",film:"Les Misérables",year:"2012",why:"Büyük karakterler ve güçlü duygular isteyenler için kapsamlı bir kitap-film seçimi."}
+];
+function filmCard(x,owned=false){return `<article class="filmCard"><div class="cover">${x.cover?`<img src="${esc(x.cover)}" onerror="this.parentElement.innerHTML='📖'">`:'📖'}</div><span class="filmBadge">🎬 Film/TV uyarlaması</span><b>${esc(x.title)}</b><small>${esc(x.author||'')}</small><div class="filmMeta">🎬 ${esc(x.film)} · ${esc(x.year)}</div><div class="filmWhy">${esc(x.why||'Kitap ve uyarlamasını birlikte keşfetmek için öneri.')}</div>${owned?'<small class="gold">✓ Kitaplığında mevcut</small>':`<button onclick="addRec(${JSON.stringify(x.title).replace(/"/g,'&quot;')},${JSON.stringify(x.author||'').replace(/"/g,'&quot;')},${JSON.stringify(x.cover||'').replace(/"/g,'&quot;')})">＋ Rafa koy</button>`}</article>`}
+async function enrichFilmBook(x){try{let d=await fetch("https://openlibrary.org/search.json?q="+encodeURIComponent('title:"'+x.title+'" author:"'+x.author+'"')+"&limit=1&fields=title,author_name,cover_i").then(r=>r.json());let hit=d.docs&&d.docs[0];return hit?{...x,cover:hit.cover_i?`https://covers.openlibrary.org/b/id/${hit.cover_i}-M.jpg`:''}:x}catch{return x}}
+async function renderFilmRecommendations(){
+ let have=books.map(b=>String(b.title||'').toLowerCase().trim());
+ let mine=filmBookRecommendations.filter(x=>have.some(t=>t===x.title.toLowerCase()||t.includes(x.title.toLowerCase())||x.title.toLowerCase().includes(t)));
+ let candidates=filmBookRecommendations.filter(x=>!mine.includes(x));
+ let [mineE,candE]=await Promise.all([Promise.all(mine.map(enrichFilmBook)),Promise.all(candidates.map(enrichFilmBook))]);
+ $('myFilmBooks').innerHTML=mineE.length?mineE.map(x=>filmCard(x,true)).join(''):'<div class="filmEmpty">Kütüphanende henüz film/TV uyarlaması bulunan bir kitap eşleşmedi. Filmli kitaplardan birini rafa ekleyebilirsin. 🎬</div>';
+ let favAuthors=books.map(b=>String(b.author||'').toLowerCase());
+ candE.sort((a,b)=>{let aa=favAuthors.some(v=>v&&a.author.toLowerCase().includes(v)||v&&v.includes(a.author.toLowerCase()))?1:0;let bb=favAuthors.some(v=>v&&b.author.toLowerCase().includes(v)||v&&v.includes(b.author.toLowerCase()))?1:0;return bb-aa});
+ $('filmRecs').innerHTML=candE.slice(0,12).map(x=>filmCard(x,false)).join('');
+}
+function showFilmRecommendations(){showSection('film');renderFilmRecommendations()}
 function addRec(t,a,c){openAdd();$("fTitle").value=t;$("fAuthor").value=a;$("fCover").value=c;$("fPages").value=300}
 function openAdd(){editId=null;$("bookModalTitle").textContent="📖 Kitap Ekle";["fTitle","fAuthor","fPages","fCover","fNotes","bookSearch"].forEach(id=>$(id).value="");$("fRead").value=0;$("fRating").value=0;$("fCategory").value="Roman";$("fStatus").value="unread";$("results").innerHTML="";$("bookModal").classList.add("open")}
 function closeBook(){$("bookModal").classList.remove("open")}
@@ -285,7 +328,7 @@ async function deleteBook(id){if(!confirm("Kitap silinsin mi?"))return;books=boo
 async function quickReadFor(id,n){let b=books.find(x=>x.id===id);if(!b)return;let old=b.read;b.read=Math.min(b.pages,b.read+n);b.status=b.read===b.pages?"finished":"reading";b.updated=iso();if(b.read>old)b.history=[...(b.history||[]),{date:b.updated,pages:b.read-old}];saveLocal();await cloudUpsert(b);closeDetail();renderAll();toast(`+${b.read-old} sayfa kaydedildi 📖`)}
 async function quickRead(n){let b=books.find(x=>x.status==="reading")||books.find(x=>x.status==="unread");if(!b)return alert("Önce bir kitap ekle.");await quickReadFor(b.id,n)}
 function openGoals(){$("gmB").value=goals.monthBooks;$("gmP").value=goals.monthPages;$("gyB").value=goals.yearBooks;$("gyP").value=goals.yearPages;$("goalModal").classList.add("open")}function closeGoals(){$("goalModal").classList.remove("open")}function saveGoals(){goals={monthBooks:+$("gmB").value||0,monthPages:+$("gmP").value||0,yearBooks:+$("gyB").value||0,yearPages:+$("gyP").value||0};saveLocal();closeGoals();renderGoals();toast("Hedefler kaydedildi 🎯")}
-function showSection(s,btn){["home","books","recommend","history","stats","friends","ai"].forEach(x=>$(x+"Section").style.display=x===s?"block":"none");document.querySelectorAll("nav button").forEach(x=>x.classList.remove("active"));if(btn)btn.classList.add("active");if(s==="history")showHistory();if(s==="stats")renderAdvancedStats();if(s==="friends")loadSocial();if(s==="ai")renderAIProfileLocal()}
+function showSection(s,btn){["home","books","recommend","film","history","stats","friends","ai"].forEach(x=>$(x+"Section").style.display=x===s?"block":"none");document.querySelectorAll("nav button").forEach(x=>x.classList.remove("active"));if(btn)btn.classList.add("active");if(s==="history")showHistory();if(s==="stats")renderAdvancedStats();if(s==="friends")loadSocial();if(s==="ai")renderAIProfileLocal()}
 function showStats(){showSection("stats")}
 function showFriends(){showSection("friends")}
 function showAI(){showSection("ai")}

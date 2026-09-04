@@ -1,25 +1,19 @@
-MY ARCANE LIBRARY V12 — GEMINI SMART LIBRARIAN FIXED
+MY ARCANE LIBRARY v12 - SMART AI + FILMLİ KİTAPLAR
 
-V12.1 fixes the Arcane AI response quality issue:
-- Direct answers: no unwanted greetings unless the user greets first.
-- Uses the full library context with concrete stats.
-- Chat history is sent to Gemini for continuity.
-- No more incomplete one-line generic answers by prompt design.
-- Real AI health check performs a tiny Gemini request.
-- Personalized recommendations use structured JSON output.
-- Recommendation cards are filtered against the user's existing library.
-- Gemini 3.6 Flash is the default model and sampling temperature is not sent.
-- Detailed API errors are returned to the UI without exposing the API key.
+Bu paket V12 Smart AI sürümüne ek olarak yeni bir "🎬 Filmi Olan Kitaplar" sekmesi içerir.
 
-SUPABASE
-Project: khmcgiklbnogsamvqjrj
-Edge Function: arcane-ai
-The function is deployed with JWT verification enabled.
+YENİ:
+- Filmi Olan Kitaplar için ayrı sol menü sekmesi.
+- Kütüphanendeki film/TV uyarlaması bulunan kitapları otomatik eşleştirme.
+- Filmli kitaplardan kişisel öneri listesi.
+- Film adı ve uyarlama yılı bilgisi.
+- Open Library üzerinden kapak bulma.
+- Rafa koy butonu.
+- Mevcut V12 Arcane AI, arkadaşlık, istatistik, hedef ve Supabase özellikleri korunmuştur.
 
-SECRET
-Create:
-GEMINI_API_KEY = your Google AI Studio API key
-Optional:
-GEMINI_MODEL = gemini-3.6-flash
+AI:
+Supabase Edge Function: arcane-ai
+GEMINI_API_KEY Supabase Secret olarak tutulmalıdır.
+Varsayılan model: gemini-3.6-flash
 
-Never put GEMINI_API_KEY into index.html.
+Not: Film/TV uyarlaması listesi uygulama içinde seçilmiş bir öneri kataloğudur; kapaklar Open Library'den alınır.
