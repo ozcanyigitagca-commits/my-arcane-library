@@ -252,29 +252,16 @@ const turkishRecommendations=[
 ];
 function recCard(x){let author=(x.author_name||[])[0]||x.author||"";return `<article class="book"><div class="cover">${x.cover_i?`<img src="https://covers.openlibrary.org/b/id/${x.cover_i}-M.jpg">`:"📖"}</div><b>${esc(x.title)}</b><small>${esc(author)}</small><button onclick="addRec(${JSON.stringify(x.title).replace(/"/g,"&quot;")},${JSON.stringify(author).replace(/"/g,"&quot;")},${JSON.stringify(x.cover_i?`https://covers.openlibrary.org/b/id/${x.cover_i}-L.jpg`:"").replace(/"/g,"&quot;")})">＋ Rafa koy</button></article>`}
 async function renderRecs(){
- let cats=[...new Set(books.map(b=>b.category).filter(Boolean))];
- let have=new Set(books.map(b=>b.title.toLowerCase()));
- try{
-  // Tavsiyeler yalnızca Türkçe adla sunulan kitaplardan oluşur.
-  // Yabancı eserlerde Türkçe çeviri adı kullanılır; Open Library sadece kapak/yazar verisini bulmak için kullanılır.
-  let candidates=turkishRecommendations.filter(x=>!have.has(x.title.toLowerCase()));
-  let enriched=await Promise.all(candidates.map(async x=>{
-   try{
-    let d=await fetch("https://openlibrary.org/search.json?q="+encodeURIComponent('title:"'+x.title+'" author:"'+x.author+'"')+"&limit=1&fields=title,author_name,cover_i,first_publish_year").then(r=>r.json());
-    let hit=d.docs&&d.docs[0];
-    return hit?{...x,cover_i:hit.cover_i,author:x.author}:x;
-   }catch{return x}
-  }));
-  // Kullanıcının türlerine göre listedeki sırayı hafifçe öne çıkar, fakat kaynak havuzu daima Türkçedir.
-  let h=enriched.slice(0,6).map(recCard).join("");
-  $("recs").innerHTML=h||'<div class="muted">Türkçe öneri bulunamadı.</div>';
-  $("recsAll").innerHTML=enriched.map(recCard).join("")||'<div class="muted">Türkçe öneri bulunamadı.</div>';
- }catch(e){
-  let tr=turkishRecommendations.filter(x=>!have.has(x.title.toLowerCase())).slice(0,6);
-  let h=tr.map(recCard).join("");
-  $("recs").innerHTML=h||'<div class="muted">Türkçe öneri bulunamadı.</div>';
-  $("recsAll").innerHTML=h||'<div class="muted">Türkçe öneri bulunamadı.</div>';
- }
+ const have=new Set(books.map(b=>String(b.title||'').toLowerCase().trim()));
+ const base=turkishRecommendations.filter(x=>!have.has(x.title.toLowerCase()));
+ const fallback=base.slice(0,12);
+ $("recs").innerHTML=fallback.slice(0,6).map(recCard).join("")||'<div class="muted">Türkçe öneri bulunamadı.</div>';
+ $("recsAll").innerHTML=fallback.map(recCard).join("")||'<div class="muted">Türkçe öneri bulunamadı.</div>';
+ // Kapakları arka planda zenginleştir; API çalışmasa da öneri kartları görünür.
+ Promise.all(fallback.map(async x=>{try{const d=await fetch("https://openlibrary.org/search.json?q="+encodeURIComponent('title:"'+x.title+'" author:"'+x.author+'"')+"&limit=1&fields=cover_i");if(!d.ok)return x;const j=await d.json();return j.docs?.[0]?.cover_i?{...x,cover_i:j.docs[0].cover_i}:x}catch{return x}})).then(enriched=>{
+   $("recs").innerHTML=enriched.slice(0,6).map(recCard).join("");
+   $("recsAll").innerHTML=enriched.map(recCard).join("");
+ });
 }
 const filmBookRecommendations=[
  {title:"Charlie'nin Çikolata Fabrikası",author:"Roald Dahl",film:"Charlie and the Chocolate Factory",year:"2005",why:"Fantastik, eğlenceli ve görsel dünyası güçlü bir kitap-film ikilisi."},
@@ -301,14 +288,20 @@ const filmBookRecommendations=[
 function filmCard(x,owned=false){return `<article class="filmCard"><div class="cover">${x.cover?`<img src="${esc(x.cover)}" onerror="this.parentElement.innerHTML='📖'">`:'📖'}</div><span class="filmBadge">🎬 Film/TV uyarlaması</span><b>${esc(x.title)}</b><small>${esc(x.author||'')}</small><div class="filmMeta">🎬 ${esc(x.film)} · ${esc(x.year)}</div><div class="filmWhy">${esc(x.why||'Kitap ve uyarlamasını birlikte keşfetmek için öneri.')}</div>${owned?'<small class="gold">✓ Kitaplığında mevcut</small>':`<button onclick="addRec(${JSON.stringify(x.title).replace(/"/g,'&quot;')},${JSON.stringify(x.author||'').replace(/"/g,'&quot;')},${JSON.stringify(x.cover||'').replace(/"/g,'&quot;')})">＋ Rafa koy</button>`}</article>`}
 async function enrichFilmBook(x){try{let d=await fetch("https://openlibrary.org/search.json?q="+encodeURIComponent('title:"'+x.title+'" author:"'+x.author+'"')+"&limit=1&fields=title,author_name,cover_i").then(r=>r.json());let hit=d.docs&&d.docs[0];return hit?{...x,cover:hit.cover_i?`https://covers.openlibrary.org/b/id/${hit.cover_i}-M.jpg`:''}:x}catch{return x}}
 async function renderFilmRecommendations(){
- let have=books.map(b=>String(b.title||'').toLowerCase().trim());
- let mine=filmBookRecommendations.filter(x=>have.some(t=>t===x.title.toLowerCase()||t.includes(x.title.toLowerCase())||x.title.toLowerCase().includes(t)));
- let candidates=filmBookRecommendations.filter(x=>!mine.includes(x));
- let [mineE,candE]=await Promise.all([Promise.all(mine.map(enrichFilmBook)),Promise.all(candidates.map(enrichFilmBook))]);
- $('myFilmBooks').innerHTML=mineE.length?mineE.map(x=>filmCard(x,true)).join(''):'<div class="filmEmpty">Kütüphanende henüz film/TV uyarlaması bulunan bir kitap eşleşmedi. Filmli kitaplardan birini rafa ekleyebilirsin. 🎬</div>';
- let favAuthors=books.map(b=>String(b.author||'').toLowerCase());
- candE.sort((a,b)=>{let aa=favAuthors.some(v=>v&&a.author.toLowerCase().includes(v)||v&&v.includes(a.author.toLowerCase()))?1:0;let bb=favAuthors.some(v=>v&&b.author.toLowerCase().includes(v)||v&&v.includes(b.author.toLowerCase()))?1:0;return bb-aa});
- $('filmRecs').innerHTML=candE.slice(0,12).map(x=>filmCard(x,false)).join('');
+ const have=books.map(b=>String(b.title||'').toLowerCase().trim());
+ const mine=filmBookRecommendations.filter(x=>have.some(t=>t===x.title.toLowerCase()||t.includes(x.title.toLowerCase())||x.title.toLowerCase().includes(t)));
+ const candidates=filmBookRecommendations.filter(x=>!mine.includes(x));
+ // Önce sabit katalogu göster; kapaklar API'den sonra gelir.
+ $("myFilmBooks").innerHTML=mine.length?mine.map(x=>filmCard(x,true)).join(''):'<div class="filmEmpty">Kütüphanende henüz film/TV uyarlaması bulunan bir kitap eşleşmedi. Filmli kitaplardan birini rafa ekleyebilirsin. 🎬</div>';
+ const visible=candidates.slice(0,12);
+ $("filmRecs").innerHTML=visible.map(x=>filmCard(x,false)).join('')||'<div class="filmEmpty">Filmli kitap önerisi bulunamadı.</div>';
+ const favAuthors=books.map(b=>String(b.author||'').toLowerCase());
+ visible.sort((a,b)=>{const aa=favAuthors.some(v=>v&&((a.author||'').toLowerCase().includes(v)||v.includes((a.author||'').toLowerCase())))?1:0;const bb=favAuthors.some(v=>v&&((b.author||'').toLowerCase().includes(v)||v.includes((b.author||'').toLowerCase())))?1:0;return bb-aa});
+ $("filmRecs").innerHTML=visible.map(x=>filmCard(x,false)).join('');
+ Promise.all(visible.map(enrichFilmBook)).then(enriched=>{
+   $("filmRecs").innerHTML=enriched.map(x=>filmCard(x,false)).join('');
+   if(mine.length)Promise.all(mine.map(enrichFilmBook)).then(me=>$("myFilmBooks").innerHTML=me.map(x=>filmCard(x,true)).join(''));
+ });
 }
 function showFilmRecommendations(){showSection('film');renderFilmRecommendations()}
 function addRec(t,a,c){openAdd();$("fTitle").value=t;$("fAuthor").value=a;$("fCover").value=c;$("fPages").value=300}
