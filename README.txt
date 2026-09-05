@@ -1,19 +1,18 @@
-MY ARCANE LIBRARY v12 - SMART AI + FILMLİ KİTAPLAR
+MY ARCANE LIBRARY v13 — STABLE
 
-Bu paket V12 Smart AI sürümüne ek olarak yeni bir "🎬 Filmi Olan Kitaplar" sekmesi içerir.
+Bu sürüm V12'nin daha dayanıklı, yerel-öncelikli paketidir.
 
-YENİ:
-- Filmi Olan Kitaplar için ayrı sol menü sekmesi.
-- Kütüphanendeki film/TV uyarlaması bulunan kitapları otomatik eşleştirme.
-- Filmli kitaplardan kişisel öneri listesi.
-- Film adı ve uyarlama yılı bilgisi.
-- Open Library üzerinden kapak bulma.
-- Rafa koy butonu.
-- Mevcut V12 Arcane AI, arkadaşlık, istatistik, hedef ve Supabase özellikleri korunmuştur.
+Öne çıkanlar:
+- Tavsiyeler ve filmli kitaplar ağ/API çalışmasa bile yerel katalogdan hemen görünür.
+- Open Library kapakları ve kitap araması timeout + hata yakalama ile çalışır.
+- Supabase senkronizasyonu giriş yapan kullanıcı için korunur; localStorage yedek olarak çalışır.
+- JSON dışa/içe aktarma korunur.
+- GitHub Pages için PWA/service-worker dosyaları eklendi; sayfa kabuğu offline açılabilir.
+- Arcane AI Edge Function: supabase/functions/arcane-ai/index.ts
 
-AI:
-Supabase Edge Function: arcane-ai
-GEMINI_API_KEY Supabase Secret olarak tutulmalıdır.
-Varsayılan model: gemini-3.6-flash
+AI için Supabase Secret:
+GEMINI_API_KEY
+İsteğe bağlı:
+GEMINI_MODEL=gemini-3.6-flash
 
-Not: Film/TV uyarlaması listesi uygulama içinde seçilmiş bir öneri kataloğudur; kapaklar Open Library'den alınır.
+GitHub Pages yalnızca frontend'i yayınlar. Supabase Edge Function ayrıca Supabase üzerinde deploy edilmelidir.

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>My Arcane Library v12 — Sanal Kütüphane</title>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link rel="manifest" href="manifest.webmanifest"><meta name="theme-color" content="#080510"><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 :root{--gold:#e8bd63;--gold2:#9b7130;--text:#f6eddb;--muted:#b8aa95;--glass:#100c09c9;--line:#76572d;--green:#78d49a}
 *{box-sizing:border-box}html,body{margin:0;min-height:100%;font-family:Georgia,"Times New Roman",serif;background:#090604;color:var(--text)}
@@ -182,6 +182,14 @@ const CATS=["Klasikler","Roman","Fantastik","Bilim Kurgu","Polisiye","Felsefe","
 let db=null, user=null, books=[], editId=null, filter="all", goals={monthBooks:3,monthPages:500,yearBooks:24,yearPages:6000}, bookResults=[], friends=[], friendBooks=[], reviewBookId=null;
 
 const $=id=>document.getElementById(id);
+const SAFE_FETCH_TIMEOUT=8000;
+async function safeJson(url,ms=SAFE_FETCH_TIMEOUT){
+ const c=new AbortController(),t=setTimeout(()=>c.abort(),ms);
+ try{const r=await fetch(url,{signal:c.signal,headers:{Accept:"application/json"}});if(!r.ok)throw new Error("HTTP "+r.status);return await r.json()}
+ finally{clearTimeout(t)}
+}
+window.addEventListener("error",e=>{console.error(e.error||e.message)});
+unhandledrejection=e=>console.error(e.reason);
 const esc=s=>String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));
 function toast(s){$("toast").textContent=s;$("toast").style.display="block";clearTimeout(window.tt);window.tt=setTimeout(()=>$("toast").style.display="none",1800)}
 function key(){return user?"arcane_v8_books_"+user.id:"arcane_v8_guest"}
@@ -258,7 +266,7 @@ async function renderRecs(){
  $("recs").innerHTML=fallback.slice(0,6).map(recCard).join("")||'<div class="muted">Türkçe öneri bulunamadı.</div>';
  $("recsAll").innerHTML=fallback.map(recCard).join("")||'<div class="muted">Türkçe öneri bulunamadı.</div>';
  // Kapakları arka planda zenginleştir; API çalışmasa da öneri kartları görünür.
- Promise.all(fallback.map(async x=>{try{const d=await fetch("https://openlibrary.org/search.json?q="+encodeURIComponent('title:"'+x.title+'" author:"'+x.author+'"')+"&limit=1&fields=cover_i");if(!d.ok)return x;const j=await d.json();return j.docs?.[0]?.cover_i?{...x,cover_i:j.docs[0].cover_i}:x}catch{return x}})).then(enriched=>{
+ Promise.all(fallback.map(async x=>{try{const d=await safeJson("https://openlibrary.org/search.json?q="+encodeURIComponent('title:"'+x.title+'" author:"'+x.author+'"')+"&limit=1&fields=cover_i");if(!d.ok)return x;const j=await d.json();return j.docs?.[0]?.cover_i?{...x,cover_i:j.docs[0].cover_i}:x}catch{return x}})).then(enriched=>{
    $("recs").innerHTML=enriched.slice(0,6).map(recCard).join("");
    $("recsAll").innerHTML=enriched.map(recCard).join("");
  });
@@ -286,7 +294,7 @@ const filmBookRecommendations=[
  {title:"Sefiller",author:"Victor Hugo",film:"Les Misérables",year:"2012",why:"Büyük karakterler ve güçlü duygular isteyenler için kapsamlı bir kitap-film seçimi."}
 ];
 function filmCard(x,owned=false){return `<article class="filmCard"><div class="cover">${x.cover?`<img src="${esc(x.cover)}" onerror="this.parentElement.innerHTML='📖'">`:'📖'}</div><span class="filmBadge">🎬 Film/TV uyarlaması</span><b>${esc(x.title)}</b><small>${esc(x.author||'')}</small><div class="filmMeta">🎬 ${esc(x.film)} · ${esc(x.year)}</div><div class="filmWhy">${esc(x.why||'Kitap ve uyarlamasını birlikte keşfetmek için öneri.')}</div>${owned?'<small class="gold">✓ Kitaplığında mevcut</small>':`<button onclick="addRec(${JSON.stringify(x.title).replace(/"/g,'&quot;')},${JSON.stringify(x.author||'').replace(/"/g,'&quot;')},${JSON.stringify(x.cover||'').replace(/"/g,'&quot;')})">＋ Rafa koy</button>`}</article>`}
-async function enrichFilmBook(x){try{let d=await fetch("https://openlibrary.org/search.json?q="+encodeURIComponent('title:"'+x.title+'" author:"'+x.author+'"')+"&limit=1&fields=title,author_name,cover_i").then(r=>r.json());let hit=d.docs&&d.docs[0];return hit?{...x,cover:hit.cover_i?`https://covers.openlibrary.org/b/id/${hit.cover_i}-M.jpg`:''}:x}catch{return x}}
+async function enrichFilmBook(x){try{let d=await safeJson("https://openlibrary.org/search.json?q="+encodeURIComponent('title:"'+x.title+'" author:"'+x.author+'"')+"&limit=1&fields=title,author_name,cover_i");let hit=d.docs&&d.docs[0];return hit?{...x,cover:hit.cover_i?`https://covers.openlibrary.org/b/id/${hit.cover_i}-M.jpg`:''}:x}catch{return x}}
 async function renderFilmRecommendations(){
  const have=books.map(b=>String(b.title||'').toLowerCase().trim());
  const mine=filmBookRecommendations.filter(x=>have.some(t=>t===x.title.toLowerCase()||t.includes(x.title.toLowerCase())||x.title.toLowerCase().includes(t)));
@@ -358,7 +366,12 @@ function closeReview(){$('reviewModal').classList.remove('open')}
 async function saveReview(){if(!reviewBookId||!user)return;let rating=Math.max(0,Math.min(10,+$('reviewRating').value||0)),opinion=$('reviewOpinion').value.trim();if(!opinion)return alert('Lütfen fikrini yaz.');let {error}=await db.from('reviews').upsert({book_id:reviewBookId,user_id:user.id,rating,opinion,updated_at:new Date().toISOString()},{onConflict:'book_id,user_id'});if(error)return toast('Fikir kaydedilemedi: '+error.message);closeReview();toast('Fikrin yayınlandı 💬');loadFriendBooks($('friendSelect').value)}
 function renderAdvancedStats(){let total=books.length,fin=books.filter(b=>b.status==='finished').length,reading=books.filter(b=>b.status==='reading').length,pg=pagesRead(),rated=books.filter(b=>+b.rating>0),avg=rated.length?(rated.reduce((n,b)=>n+(+b.rating),0)/rated.length).toFixed(1):'0';$('sTotal').textContent=total;$('sFinished').textContent=fin;$('sReading').textContent=reading;$('sPages').textContent=pg.toLocaleString('tr-TR');$('sAvg').textContent=avg;$('sRate').textContent=(total?Math.round(fin/total*100):0)+'%';let cats={};books.forEach(b=>cats[b.category||'Diğer']=(cats[b.category||'Diğer']||0)+1);$('genreStats').innerHTML=Object.entries(cats).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`<div class="statRow"><div class="statRowTop"><span>${esc(k)}</span><b>${v}</b></div><div class="miniBar"><i style="width:${total?v/total*100:0}%"></i></div></div>`).join('')||'<div class="muted">Henüz veri yok.</div>';let ds=[];for(let i=13;i>=0;i--){let d=new Date();d.setHours(0,0,0,0);d.setDate(d.getDate()-i);let key=day(d),n=books.flatMap(b=>b.history||[]).filter(h=>day(h.date)===key).reduce((a,h)=>a+(+h.pages||0),0);ds.push({key,n})}let max=Math.max(1,...ds.map(x=>x.n));$('dailyStats').innerHTML=ds.map(x=>`<div class="statRow"><div class="statRowTop"><span>${x.key.slice(5)}</span><b>${x.n} sf</b></div><div class="miniBar"><i style="width:${x.n/max*100}%"></i></div></div>`).join('');let tops=[...rated].sort((a,b)=>(+b.rating)-(+a.rating)).slice(0,5);$('topRated').innerHTML=tops.length?tops.map(b=>`<div class="statRow"><b>${esc(b.title)}</b><br><span class="stars">${'★'.repeat(Math.round(b.rating/2))}${'☆'.repeat(5-Math.round(b.rating/2))}</span> <small>${b.rating}/10</small></div>`).join(''):'<div class="muted">Henüz puanlanmış kitap yok.</div>'}
 
-async function findBook(){let q=$("bookSearch").value.trim()||$("fTitle").value.trim();if(!q)return;let d=await fetch("https://openlibrary.org/search.json?q="+encodeURIComponent(q)+"&limit=8&fields=title,author_name,cover_i,number_of_pages_median,isbn,first_publish_year").then(r=>r.json());bookResults=d.docs||[];$("results").innerHTML=bookResults.map((b,i)=>{let c=b.cover_i?`https://covers.openlibrary.org/b/id/${b.cover_i}-M.jpg`:"";return `<div class="result" onclick="chooseResult(${i})">${c?`<img src="${c}">`:"📖"}<div><b>${esc(b.title)}</b><br><span class="muted">${esc((b.author_name||[]).join(", "))}</span><br><span class="muted">${b.first_publish_year||""} · ${b.number_of_pages_median||"?"} sayfa</span></div><span>Seç</span></div>`}).join("")}
+async function findBook(){
+ let q=$("bookSearch").value.trim()||$("fTitle").value.trim();if(!q)return;
+ $("results").innerHTML='<span class="muted">🔎 Kitap aranıyor…</span>';
+ try{const d=await safeJson("https://openlibrary.org/search.json?q="+encodeURIComponent(q)+"&limit=8&fields=title,author_name,cover_i,number_of_pages_median,isbn,first_publish_year");bookResults=d.docs||[];
+  $("results").innerHTML=bookResults.length?bookResults.map((b,i)=>{let c=b.cover_i?`https://covers.openlibrary.org/b/id/${b.cover_i}-M.jpg`:"";return `<div class="result" onclick="chooseResult(${i})">${c?`<img src="${c}">`:"📖"}<div><b>${esc(b.title)}</b><br><span class="muted">${esc((b.author_name||[]).join(", "))}</span><br><span class="muted">${b.first_publish_year||""} · ${b.number_of_pages_median||"?"} sayfa</span></div><span>Seç</span></div>`}).join(""):'<div class="empty">Sonuç bulunamadı. Kitap adını farklı yazarak tekrar deneyebilirsin.</div>'
+ }catch(e){bookResults=[];$("results").innerHTML='<div class="empty">📡 Kitap veri servisine ulaşılamadı. Kitabı bilgilerini elle girerek de ekleyebilirsin.</div>';console.warn(e)}}
 function chooseResult(i){let b=bookResults[i];$("fTitle").value=b.title||"";$("fAuthor").value=(b.author_name||[])[0]||"";$("fPages").value=b.number_of_pages_median||300;$("fCover").value=b.cover_i?`https://covers.openlibrary.org/b/id/${b.cover_i}-L.jpg`:"";$("results").innerHTML='<span class="muted">✓ Kitap bilgileri seçildi</span>'}
 function openAuth(){$("authMsg").textContent="";$("authModal").classList.add("open")}function closeAuth(){$("authModal").classList.remove("open")}
 async function signUp(){if(!db)return $("authMsg").textContent="Önce Supabase URL/Key tanımlanmalı.";let e=$("authEmail").value.trim(),p=$("authPass").value,n=$("authName").value.trim();let {error}=await db.auth.signUp({email:e,password:p,options:{data:{name:n}}});$("authMsg").textContent=error?error.message:"Kayıt başarılı. E-posta doğrulaması gerekiyorsa gelen kutunu kontrol et."}
@@ -368,5 +381,6 @@ function openSettings(){$("settingsModal").classList.add("open")}function closeS
 function exportData(){let a=document.createElement("a");a.href=URL.createObjectURL(new Blob([JSON.stringify({version:12,books,goals},null,2)],{type:"application/json"}));a.download="my-arcane-library-v12.json";a.click()}
 function importData(e){let f=e.target.files[0];if(!f)return;let r=new FileReader();r.onload=()=>{try{let x=JSON.parse(r.result);books=x.books||[];goals=x.goals||goals;saveLocal();renderAll();toast("Yedek yüklendi ✓")}catch{alert("Geçersiz JSON")}};r.readAsText(f)}
 fillCats();init();
+if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}))}
 </script>
 </body></html>
