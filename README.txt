@@ -1,18 +1,16 @@
-MY ARCANE LIBRARY v13 — STABLE
+My Arcane Library v13.1 — Raf Güvenlik Sürümü
 
-Bu sürüm V12'nin daha dayanıklı, yerel-öncelikli paketidir.
+Bu paket kişisel sanal kütüphane, okuma takibi, hedefler, tavsiyeler, film/TV uyarlamaları, arkadaşlar ve Arcane AI içerir.
 
-Öne çıkanlar:
-- Tavsiyeler ve filmli kitaplar ağ/API çalışmasa bile yerel katalogdan hemen görünür.
-- Open Library kapakları ve kitap araması timeout + hata yakalama ile çalışır.
-- Supabase senkronizasyonu giriş yapan kullanıcı için korunur; localStorage yedek olarak çalışır.
-- JSON dışa/içe aktarma korunur.
-- GitHub Pages için PWA/service-worker dosyaları eklendi; sayfa kabuğu offline açılabilir.
-- Arcane AI Edge Function: supabase/functions/arcane-ai/index.ts
+v13.1 düzeltmeleri:
+- Raf kartlarına tıklama artık yalnızca kitap ayrıntısını açar; kitap silme ile hiçbir bağlantısı yoktur.
+- Kitap kartları data-book-id + olay dinleme ile güvenli şekilde açılır.
+- Supabase sorgusu hata verdiğinde yerel kitaplık artık boş listeyle ezilmez.
+- Bulut boş dönerse mevcut yerel kitaplar korunur ve mümkünse buluta geri yazılır.
+- Yerel ve bulut kitapları güncelleme tarihine göre güvenli şekilde birleştirilir.
+- Buluttan silme başarısız olursa kitap otomatik olarak geri yüklenir.
+- PWA manifestine 192/512 PNG ikonları eklendi.
+- Service Worker yeni sürümde HTML için network-first çalışır; eski kodun cache'de takılı kalması azaltıldı.
+- JSON yedek adı v13 olarak güncellendi.
 
-AI için Supabase Secret:
-GEMINI_API_KEY
-İsteğe bağlı:
-GEMINI_MODEL=gemini-3.6-flash
-
-GitHub Pages yalnızca frontend'i yayınlar. Supabase Edge Function ayrıca Supabase üzerinde deploy edilmelidir.
+Supabase Edge Function: supabase/functions/arcane-ai/index.ts

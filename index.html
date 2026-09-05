@@ -70,6 +70,10 @@ button:hover{border-color:#b46cff;box-shadow:0 0 12px rgba(153,78,255,.18)}
 .aiToolbar{display:flex;gap:7px;justify-content:flex-end;margin-bottom:7px}.aiCards{display:grid;gap:8px;margin-top:10px}.aiCard{display:grid;grid-template-columns:52px 1fr;gap:9px;padding:9px;border:1px solid rgba(126,73,171,.45);border-radius:9px;background:rgba(17,9,29,.72)}.aiCard img{width:52px;height:72px;object-fit:cover;border-radius:5px}.aiCard button{margin-top:5px;font-size:11px}.aiInsight{margin-top:10px;padding:11px;border-left:2px solid #a54fff;background:rgba(19,9,31,.72);border-radius:0 8px 8px 0;line-height:1.5}.statBig .stat{min-height:90px;display:flex;flex-direction:column;justify-content:center}.miniBar{height:8px;background:#09060f;border-radius:8px;overflow:hidden;margin:5px 0}.miniBar i{display:block;height:100%;background:linear-gradient(90deg,#733cff,#c16cff)}.statRow{margin:9px 0}.statRowTop{display:flex;justify-content:space-between;gap:8px}.aiToolbar button{font-size:11px}
 @media(max-width:900px){.socialGrid{grid-template-columns:1fr}.friendBook{grid-template-columns:50px 1fr}.friendBook>.friendActions{grid-column:2}.aiGrid{grid-template-columns:1fr}}
 </style>
+
+<style id="shelf-stability">
+.shelfBook{position:relative;transition:transform .16s ease,box-shadow .16s ease,border-color .16s ease;outline:none}.shelfBook:focus-visible{border-color:#c17bff;box-shadow:0 0 0 2px rgba(193,123,255,.25),0 12px 28px rgba(0,0,0,.5)}
+</style>
 </head>
 <body>
 <div class="app">
@@ -189,7 +193,7 @@ async function safeJson(url,ms=SAFE_FETCH_TIMEOUT){
  finally{clearTimeout(t)}
 }
 window.addEventListener("error",e=>{console.error(e.error||e.message)});
-unhandledrejection=e=>console.error(e.reason);
+window.addEventListener("unhandledrejection",e=>console.error(e.reason));
 const esc=s=>String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));
 function toast(s){$("toast").textContent=s;$("toast").style.display="block";clearTimeout(window.tt);window.tt=setTimeout(()=>$("toast").style.display="none",1800)}
 function key(){return user?"arcane_v8_books_"+user.id:"arcane_v8_guest"}
@@ -208,18 +212,40 @@ async function init(){
  await afterUser(); renderAll();
 }
 async function afterUser(){loadLocal();friends=[];friendBooks=[];if(user){$("userName").textContent=user.user_metadata?.name||user.email?.split("@")[0]||"Kütüphaneci";$("userEmail").textContent=user.email;if(db){await pullCloud();await loadSocial();}}else{$("userName").textContent="Misafir";$('userEmail').textContent=db?"Giriş yapılmadı":"Yerel mod";renderFriendsEmpty()}renderAll()}
-async function pullCloud(){if(!db||!user)return;let {data,error}=await db.from("books").select("*").eq("user_id",user.id).order("updated_at",{ascending:false});if(!error&&data){books=data.map(r=>({id:r.id,title:r.title,author:r.author||"",pages:r.pages||1,read:r.read||0,category:r.category||"Roman",status:r.status||"unread",rating:r.rating||0,cover:r.cover||"",notes:r.notes||"",fav:!!r.fav,history:r.history||[],updated:r.updated_at}));saveLocal()}}
-async function cloudUpsert(b){if(!db||!user)return;await db.from("books").upsert({id:b.id,user_id:user.id,title:b.title,author:b.author,pages:b.pages,read:b.read,category:b.category,status:b.status,rating:b.rating,cover:b.cover,notes:b.notes,fav:b.fav,history:b.history||[],updated_at:b.updated})}
-async function cloudDelete(id){if(db&&user)await db.from("books").delete().eq("id",id).eq("user_id",user.id)}
+async function pullCloud(){
+ if(!db||!user)return;
+ const localBefore=[...books];
+ const {data,error}=await db.from("books").select("*").eq("user_id",user.id).order("updated_at",{ascending:false});
+ if(error){console.warn("Cloud kitaplık okunamadı:",error);books=localBefore;return}
+ const cloud=(data||[]).map(r=>({id:r.id,title:r.title,author:r.author||"",pages:r.pages||1,read:r.read||0,category:r.category||"Roman",status:r.status||"unread",rating:r.rating||0,cover:r.cover||"",notes:r.notes||"",fav:!!r.fav,history:r.history||[],updated:r.updated_at||iso()}));
+ if(!cloud.length&&localBefore.length){
+   books=localBefore;
+   for(const b of localBefore){try{await cloudUpsert(b)}catch(e){console.warn("Cloud yedekleme başarısız:",e)}}
+   saveLocal();
+   return;
+ }
+ const byId=new Map(cloud.map(b=>[b.id,b]));
+ for(const local of localBefore){
+   const remote=byId.get(local.id);
+   if(!remote){byId.set(local.id,local);try{await cloudUpsert(local)}catch(e){console.warn(e)}}
+   else if(new Date(local.updated||0)>new Date(remote.updated||0)){byId.set(local.id,local);try{await cloudUpsert(local)}catch(e){console.warn(e)}}
+ }
+ books=[...byId.values()].sort((a,b)=>new Date(b.updated||0)-new Date(a.updated||0));
+ saveLocal();
+}
+async function cloudUpsert(b){if(!db||!user)return {error:null};return await db.from("books").upsert({id:b.id,user_id:user.id,title:b.title,author:b.author,pages:b.pages,read:b.read,category:b.category,status:b.status,rating:b.rating,cover:b.cover,notes:b.notes,fav:b.fav,history:b.history||[],updated_at:b.updated})}
+async function cloudDelete(id){if(!db||!user)return {error:null};return await db.from("books").delete().eq("id",id).eq("user_id",user.id)}
 function renderAll(){renderBooks();renderGoals();renderStats();renderStreak();renderProfile();renderRecs();renderFilmRecommendations()}
 function setFilter(x){filter=x;renderBooks()}
 function renderBooks(){
+ bindShelfClicks();
  let q=($("search")?.value||"").toLowerCase(),list=books.filter(b=>(b.title+" "+b.author).toLowerCase().includes(q)&&(filter==="all"||b.status===filter));
  list.sort((a,b)=>a.title.localeCompare(b.title,"tr"));
  const html=list.length?list.map(bookCard).join(""):`<div class="empty">Bu rafta kitap yok.</div>`;
  $("booksHome").innerHTML=html;$("booksAll").innerHTML=html;
 }
-function bookCard(b){let p=b.pages?Math.min(100,Math.round(b.read/b.pages*100)):0;return `<article class="book" onclick="openDetail('${b.id}')"><div class="cover">${b.cover?`<img src="${esc(b.cover)}" onerror="this.parentNode.textContent='📖'">`:"📖"}</div><div><b>${esc(b.title)}</b><br><small>${esc(b.author||"Bilinmeyen")}</small></div><div><span class="status">${b.status==="finished"?"✓ Okudum":b.status==="reading"?"● Okuyorum":"○ Okuyacağım"}</span><br><small>${b.read}/${b.pages} sayfa · ${p}%</small><br><span class="stars">${"★".repeat(Math.round((b.rating||0)/2))}${"☆".repeat(5-Math.round((b.rating||0)/2))}</span></div></article>`}
+function bookCard(b){let p=b.pages?Math.min(100,Math.round(b.read/b.pages*100)):0;return `<article class="book shelfBook" data-book-id="${esc(b.id)}" tabindex="0" role="button" aria-label="${esc(b.title)} ayrıntılarını aç"><div class="cover">${b.cover?`<img src="${esc(b.cover)}" onerror="this.parentNode.textContent='📖'">`:"📖"}</div><div><b>${esc(b.title)}</b><br><small>${esc(b.author||"Bilinmeyen")}</small></div><div><span class="status">${b.status==="finished"?"✓ Okudum":b.status==="reading"?"● Okuyorum":"○ Okuyacağım"}</span><br><small>${b.read}/${b.pages} sayfa · ${p}%</small><br><span class="stars">${"★".repeat(Math.round((b.rating||0)/2))+"☆".repeat(5-Math.round((b.rating||0)/2))}</span></div></article>`}
+function bindShelfClicks(){["booksHome","booksAll"].forEach(id=>{const el=$(id);if(!el||el.dataset.bound)return;el.dataset.bound="1";el.addEventListener("click",e=>{const card=e.target.closest(".shelfBook[data-book-id]");if(!card||!el.contains(card))return;e.preventDefault();e.stopPropagation();openDetail(card.dataset.bookId)});el.addEventListener("keydown",e=>{if(e.key!=="Enter"&&e.key!==" ")return;const card=e.target.closest(".shelfBook[data-book-id]");if(!card)return;e.preventDefault();openDetail(card.dataset.bookId)})})}
 function renderStats(){let avg=books.length?(books.reduce((n,b)=>n+(+b.rating||0),0)/books.length).toFixed(1):"0";$("statBooks").textContent=books.length;$("statPages").textContent=pagesRead().toLocaleString("tr-TR");$("statFinished").textContent=books.filter(b=>b.status==="finished").length;$("statRating").textContent=avg}
 function renderStreak(){$("streak").textContent=streak()+" gün 🔥"}
 function renderProfile(){let l=level();$("levelText").textContent=`Seviye ${l.lv} · ${l.name}`;$("xpbar").style.width=l.pct+"%"}
@@ -325,7 +351,7 @@ async function saveBook(){
  if(old){let d=r-old.read;if(d>0)b.history=[...(b.history||[]),{date:b.updated,pages:d}]}else if(r>0)b.history=[{date:b.updated,pages:r}];
  if(!old)books.push(b);saveLocal();await cloudUpsert(b);closeBook();renderAll();toast("Kitap kaydedildi ✨")
 }
-async function deleteBook(id){if(!confirm("Kitap silinsin mi?"))return;books=books.filter(b=>b.id!==id);saveLocal();await cloudDelete(id);closeDetail();renderAll();toast("Kitap silindi")}
+async function deleteBook(id){if(!confirm("Kitap silinsin mi?"))return;const removed=books.find(b=>b.id===id);if(!removed)return;books=books.filter(b=>b.id!==id);saveLocal();const result=await cloudDelete(id);if(result?.error){books.push(removed);saveLocal();renderAll();toast("Silme işlemi buluta uygulanamadı; kitap geri yüklendi.");return}closeDetail();renderAll();toast("Kitap silindi")}
 async function quickReadFor(id,n){let b=books.find(x=>x.id===id);if(!b)return;let old=b.read;b.read=Math.min(b.pages,b.read+n);b.status=b.read===b.pages?"finished":"reading";b.updated=iso();if(b.read>old)b.history=[...(b.history||[]),{date:b.updated,pages:b.read-old}];saveLocal();await cloudUpsert(b);closeDetail();renderAll();toast(`+${b.read-old} sayfa kaydedildi 📖`)}
 async function quickRead(n){let b=books.find(x=>x.status==="reading")||books.find(x=>x.status==="unread");if(!b)return alert("Önce bir kitap ekle.");await quickReadFor(b.id,n)}
 function openGoals(){$("gmB").value=goals.monthBooks;$("gmP").value=goals.monthPages;$("gyB").value=goals.yearBooks;$("gyP").value=goals.yearPages;$("goalModal").classList.add("open")}function closeGoals(){$("goalModal").classList.remove("open")}function saveGoals(){goals={monthBooks:+$("gmB").value||0,monthPages:+$("gmP").value||0,yearBooks:+$("gyB").value||0,yearPages:+$("gyP").value||0};saveLocal();closeGoals();renderGoals();toast("Hedefler kaydedildi 🎯")}
@@ -378,7 +404,7 @@ async function signUp(){if(!db)return $("authMsg").textContent="Önce Supabase U
 async function signIn(){if(!db)return $("authMsg").textContent="Önce Supabase URL/Key tanımlanmalı.";let {error}=await db.auth.signInWithPassword({email:$("authEmail").value.trim(),password:$("authPass").value});$("authMsg").textContent=error?error.message:"Giriş başarılı."}
 async function signOut(){if(db)await db.auth.signOut();else user=null;closeAuth();toast("Çıkış yapıldı")}
 function openSettings(){$("settingsModal").classList.add("open")}function closeSettings(){$("settingsModal").classList.remove("open")}
-function exportData(){let a=document.createElement("a");a.href=URL.createObjectURL(new Blob([JSON.stringify({version:12,books,goals},null,2)],{type:"application/json"}));a.download="my-arcane-library-v12.json";a.click()}
+function exportData(){let a=document.createElement("a");a.href=URL.createObjectURL(new Blob([JSON.stringify({version:13,books,goals},null,2)],{type:"application/json"}));a.download="my-arcane-library-v13.json";a.click()}
 function importData(e){let f=e.target.files[0];if(!f)return;let r=new FileReader();r.onload=()=>{try{let x=JSON.parse(r.result);books=x.books||[];goals=x.goals||goals;saveLocal();renderAll();toast("Yedek yüklendi ✓")}catch{alert("Geçersiz JSON")}};r.readAsText(f)}
 fillCats();init();
 if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}))}
