@@ -1,16 +1,13 @@
-My Arcane Library v13.1 — Raf Güvenlik Sürümü
+My Arcane Library v14 — Fiziksel Raf Sistemi
 
-Bu paket kişisel sanal kütüphane, okuma takibi, hedefler, tavsiyeler, film/TV uyarlamaları, arkadaşlar ve Arcane AI içerir.
+Bu sürüm v13.1 üzerine hazırlanmıştır.
 
-v13.1 düzeltmeleri:
-- Raf kartlarına tıklama artık yalnızca kitap ayrıntısını açar; kitap silme ile hiçbir bağlantısı yoktur.
-- Kitap kartları data-book-id + olay dinleme ile güvenli şekilde açılır.
-- Supabase sorgusu hata verdiğinde yerel kitaplık artık boş listeyle ezilmez.
-- Bulut boş dönerse mevcut yerel kitaplar korunur ve mümkünse buluta geri yazılır.
-- Yerel ve bulut kitapları güncelleme tarihine göre güvenli şekilde birleştirilir.
-- Buluttan silme başarısız olursa kitap otomatik olarak geri yüklenir.
-- PWA manifestine 192/512 PNG ikonları eklendi.
-- Service Worker yeni sürümde HTML için network-first çalışır; eski kodun cache'de takılı kalması azaltıldı.
-- JSON yedek adı v13 olarak güncellendi.
+Yeni:
+- Kitaplar kart listesi yerine gerçek raf hissi veren fiziksel kitaplık görünümünde.
+- Her raf 8 kitaba kadar kitapları düzenler; fazla kitap yeni rafa geçer.
+- Kitaplara tıklama yalnızca detay penceresini açar; silme işlemi sadece detay içindeki açık Sil butonu ile yapılabilir.
+- Supabase boş/hatalı dönerse yerel kitaplar korunur.
+- PWA cache sürümü v14 olarak yenilendi.
+- JSON yedeği v14 olarak dışa aktarılır.
 
-Supabase Edge Function: supabase/functions/arcane-ai/index.ts
+Kurulum: index.html, manifest.webmanifest, sw.js ve görsel dosyalarını aynı klasörde tutun.

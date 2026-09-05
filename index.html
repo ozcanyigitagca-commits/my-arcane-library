@@ -101,7 +101,7 @@ button:hover{border-color:#b46cff;box-shadow:0 0 12px rgba(153,78,255,.18)}
 <body>
 <div class="app">
 <aside>
-  <div class="brand"><div class="brandIcon">📖</div><div><h1>My Arcane Library v12</h1><small>Sanal Kütüphane</small></div></div>
+  <div class="brand"><div class="brandIcon">📖</div><div><h1>My Arcane Library v14.1</h1><small>Sanal Kütüphane</small></div></div>
   <nav>
     <button class="active" onclick="showSection('home',this)">🏛️ <span>Kütüphane</span></button>
     <button onclick="showSection('books',this)">📚 <span>Kitaplarım</span></button>
@@ -234,10 +234,11 @@ async function init(){
  if(SUPABASE_URL.startsWith("http")&&!SUPABASE_KEY.startsWith("YOUR_")){db=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);$("syncState").textContent="● Çevrimiçi";const {data}=await db.auth.getSession();user=data.session?.user||null;db.auth.onAuthStateChange(async(_e,s)=>{user=s?.user||null;await afterUser()})} 
  await afterUser(); renderAll();
 }
-async function afterUser(){loadLocal();friends=[];friendBooks=[];if(user){$("userName").textContent=user.user_metadata?.name||user.email?.split("@")[0]||"Kütüphaneci";$("userEmail").textContent=user.email;if(db){await pullCloud();await loadSocial();}}else{$("userName").textContent="Misafir";$('userEmail').textContent=db?"Giriş yapılmadı":"Yerel mod";renderFriendsEmpty()}renderAll()}
+let userSyncRun=0;
+async function afterUser(){const run=++userSyncRun;loadLocal();friends=[];friendBooks=[];if(user){$("userName").textContent=user.user_metadata?.name||user.email?.split("@")[0]||"Kütüphaneci";$("userEmail").textContent=user.email;if(db){await pullCloud();if(run!==userSyncRun)return;await loadSocial();}}else{$("userName").textContent="Misafir";$('userEmail').textContent=db?"Giriş yapılmadı":"Yerel mod";renderFriendsEmpty()}renderAll()}
 async function pullCloud(){
  if(!db||!user)return;
- const localBefore=[...books];
+ const localBefore=Array.isArray(books)?books.slice():[]; if(localBefore.length)localStorage.setItem('arcane_last_good_books_'+user.id,JSON.stringify(localBefore));
  const {data,error}=await db.from("books").select("*").eq("user_id",user.id).order("updated_at",{ascending:false});
  if(error){console.warn("Cloud kitaplık okunamadı:",error);books=localBefore;return}
  const cloud=(data||[]).map(r=>({id:r.id,title:r.title,author:r.author||"",pages:r.pages||1,read:r.read||0,category:r.category||"Roman",status:r.status||"unread",rating:r.rating||0,cover:r.cover||"",notes:r.notes||"",fav:!!r.fav,history:r.history||[],updated:r.updated_at||iso()}));
@@ -246,6 +247,9 @@ async function pullCloud(){
    for(const b of localBefore){try{await cloudUpsert(b)}catch(e){console.warn("Cloud yedekleme başarısız:",e)}}
    saveLocal();
    return;
+ }
+ if(!cloud.length&&!localBefore.length){
+   try{const backup=JSON.parse(localStorage.getItem('arcane_last_good_books_'+user.id)||'[]');if(Array.isArray(backup)&&backup.length){books=backup;for(const b of backup){try{await cloudUpsert(b)}catch(e){}}saveLocal();return}}catch{}
  }
  const byId=new Map(cloud.map(b=>[b.id,b]));
  for(const local of localBefore){
@@ -260,18 +264,28 @@ async function cloudUpsert(b){if(!db||!user)return {error:null};return await db.
 async function cloudDelete(id){if(!db||!user)return {error:null};return await db.from("books").delete().eq("id",id).eq("user_id",user.id)}
 function renderAll(){renderBooks();renderGoals();renderStats();renderStreak();renderProfile();renderRecs();renderFilmRecommendations()}
 function setFilter(x){filter=x;renderBooks()}
+let shelfDelegationBound=false;
 function renderBooks(){
- bindShelfClicks();
- let q=($('search')?.value||'').toLowerCase(),list=books.filter(b=>(b.title+' '+b.author).toLowerCase().includes(q)&&(filter==='all'||b.status===filter));
- list.sort((a,b)=>a.title.localeCompare(b.title,'tr'));
- const groups=[];
- for(let i=0;i<list.length;i+=8) groups.push(list.slice(i,i+8));
+ // IMPORTANT: rendering the shelf must never mutate `books`. It only reads a snapshot.
+ const source=Array.isArray(books)?books.slice():[];
+ let q=($('search')?.value||'').toLowerCase().trim();
+ let list=source.filter(b=>(String(b.title||'')+' '+String(b.author||'')).toLowerCase().includes(q)&&(filter==='all'||b.status===filter));
+ list.sort((a,b)=>String(a.title||'').localeCompare(String(b.title||''),'tr'));
+ const groups=[]; for(let i=0;i<list.length;i+=8) groups.push(list.slice(i,i+8));
  const labels={all:'Genel Koleksiyon',reading:'Şu An Okunanlar',unread:'Okunmayı Bekleyenler',finished:'Tamamlananlar'};
  const html=list.length?`<div class="shelfLabel">📚 ${labels[filter]||'Koleksiyon'} <i></i><span>${list.length} kitap</span></div><div class="libraryShelves">${groups.map((g,i)=>`<div class="shelfRow" aria-label="Kitap rafı ${i+1}">${g.map(bookCard).join('')}</div>`).join('')}</div>`:`<div class="shelfEmpty">📚<br><br>Bu rafta henüz kitap yok.<br><small>Yeni bir kitap ekleyerek rafını doldurabilirsin.</small></div>`;
- $('booksHome').innerHTML=html;$('booksAll').innerHTML=html;
+ $('booksHome').innerHTML=html; $('booksAll').innerHTML=html;
+ bindShelfClicks();
 }
-function bookCard(b){let p=b.pages?Math.min(100,Math.round(b.read/b.pages*100)):0;return `<article class="book shelfBook" data-book-id="${esc(b.id)}" tabindex="0" role="button" aria-label="${esc(b.title)} ayrıntılarını aç"><div class="cover">${b.cover?`<img src="${esc(b.cover)}" onerror="this.parentNode.textContent='📖'">`:"📖"}</div><div><b>${esc(b.title)}</b><br><small>${esc(b.author||"Bilinmeyen")}</small></div><div><span class="status">${b.status==="finished"?"✓ Okudum":b.status==="reading"?"● Okuyorum":"○ Okuyacağım"}</span><br><small>${b.read}/${b.pages} sayfa · ${p}%</small><br><span class="stars">${"★".repeat(Math.round((b.rating||0)/2))+"☆".repeat(5-Math.round((b.rating||0)/2))}</span></div></article>`}
-function bindShelfClicks(){["booksHome","booksAll"].forEach(id=>{const el=$(id);if(!el||el.dataset.bound)return;el.dataset.bound="1";el.addEventListener("click",e=>{const card=e.target.closest(".shelfBook[data-book-id]");if(!card||!el.contains(card))return;e.preventDefault();e.stopPropagation();openDetail(card.dataset.bookId)});el.addEventListener("keydown",e=>{if(e.key!=="Enter"&&e.key!==" ")return;const card=e.target.closest(".shelfBook[data-book-id]");if(!card)return;e.preventDefault();openDetail(card.dataset.bookId)})})}
+function bookCard(b){let p=b.pages?Math.min(100,Math.round((+b.read||0)/b.pages*100)):0;return `<article class="book shelfBook" data-book-id="${esc(b.id)}" tabindex="0" role="button" aria-label="${esc(b.title)} ayrıntılarını aç"><div class="cover">${b.cover?`<img src="${esc(b.cover)}" onerror="this.parentNode.textContent='📖'">`:"📖"}</div><div><b>${esc(b.title)}</b><br><small>${esc(b.author||"Bilinmeyen")}</small></div><div><span class="status">${b.status==="finished"?"✓ Okudum":b.status==="reading"?"● Okuyorum":"○ Okuyacağım"}</span><br><small>${b.read||0}/${b.pages||0} sayfa · ${p}%</small><br><span class="stars">${"★".repeat(Math.round((b.rating||0)/2))+"☆".repeat(5-Math.round((b.rating||0)/2))}</span></div></article>`}
+function bindShelfClicks(){
+ if(shelfDelegationBound)return;
+ shelfDelegationBound=true;
+ ['booksHome','booksAll'].forEach(id=>{const el=$(id);if(!el)return;
+   el.addEventListener('click',e=>{const card=e.target.closest('.shelfBook[data-book-id]');if(!card||!el.contains(card))return;e.preventDefault();e.stopPropagation();const id=card.getAttribute('data-book-id');const b=books.find(x=>String(x.id)===String(id));if(b)openDetail(b.id);});
+   el.addEventListener('keydown',e=>{if(e.key!=='Enter'&&e.key!==' ')return;const card=e.target.closest('.shelfBook[data-book-id]');if(!card)return;e.preventDefault();const b=books.find(x=>String(x.id)===String(card.getAttribute('data-book-id')));if(b)openDetail(b.id);});
+ });
+}
 function renderStats(){let avg=books.length?(books.reduce((n,b)=>n+(+b.rating||0),0)/books.length).toFixed(1):"0";$("statBooks").textContent=books.length;$("statPages").textContent=pagesRead().toLocaleString("tr-TR");$("statFinished").textContent=books.filter(b=>b.status==="finished").length;$("statRating").textContent=avg}
 function renderStreak(){$("streak").textContent=streak()+" gün 🔥"}
 function renderProfile(){let l=level();$("levelText").textContent=`Seviye ${l.lv} · ${l.name}`;$("xpbar").style.width=l.pct+"%"}
@@ -430,7 +444,7 @@ async function signUp(){if(!db)return $("authMsg").textContent="Önce Supabase U
 async function signIn(){if(!db)return $("authMsg").textContent="Önce Supabase URL/Key tanımlanmalı.";let {error}=await db.auth.signInWithPassword({email:$("authEmail").value.trim(),password:$("authPass").value});$("authMsg").textContent=error?error.message:"Giriş başarılı."}
 async function signOut(){if(db)await db.auth.signOut();else user=null;closeAuth();toast("Çıkış yapıldı")}
 function openSettings(){$("settingsModal").classList.add("open")}function closeSettings(){$("settingsModal").classList.remove("open")}
-function exportData(){let a=document.createElement("a");a.href=URL.createObjectURL(new Blob([JSON.stringify({version:14,books,goals},null,2)],{type:"application/json"}));a.download="my-arcane-library-v14.json";a.click()}
+function exportData(){let a=document.createElement("a");a.href=URL.createObjectURL(new Blob([JSON.stringify({version:14.1,books,goals},null,2)],{type:"application/json"}));a.download="my-arcane-library-v14.1.json";a.click()}
 function importData(e){let f=e.target.files[0];if(!f)return;let r=new FileReader();r.onload=()=>{try{let x=JSON.parse(r.result);books=x.books||[];goals=x.goals||goals;saveLocal();renderAll();toast("Yedek yüklendi ✓")}catch{alert("Geçersiz JSON")}};r.readAsText(f)}
 fillCats();init();
 if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}))}
