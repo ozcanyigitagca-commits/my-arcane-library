@@ -1,0 +1,10 @@
+{
+  "name": "My Arcane Library",
+  "short_name": "Arcane Library",
+  "lang": "tr",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#05030a",
+  "theme_color": "#080510",
+  "icons": []
+}
