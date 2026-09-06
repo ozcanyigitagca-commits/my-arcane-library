@@ -1,13 +1,10 @@
-My Arcane Library v14 — Fiziksel Raf Sistemi
+My Arcane Library v14.7
 
-Bu sürüm v13.1 üzerine hazırlanmıştır.
+Raf tıklama ve kitap arama düzeltmesi.
 
-Yeni:
-- Kitaplar kart listesi yerine gerçek raf hissi veren fiziksel kitaplık görünümünde.
-- Her raf 8 kitaba kadar kitapları düzenler; fazla kitap yeni rafa geçer.
-- Kitaplara tıklama yalnızca detay penceresini açar; silme işlemi sadece detay içindeki açık Sil butonu ile yapılabilir.
-- Supabase boş/hatalı dönerse yerel kitaplar korunur.
-- PWA cache sürümü v14 olarak yenilendi.
-- JSON yedeği v14 olarak dışa aktarılır.
+ÖNEMLİ: Kitap araması artık önce Supabase Edge Function 'book-search' üzerinden yapılır. Böylece tarayıcıdaki CORS/yerel dosya kısıtları nedeniyle Open Library ve Google Books'a doğrudan erişim gerekmez.
 
-Kurulum: index.html, manifest.webmanifest, sw.js ve görsel dosyalarını aynı klasörde tutun.
+Supabase Function: https://khmcgiklbnogsamvqjrj.supabase.co/functions/v1/book-search
+Durum: ACTIVE / public search endpoint
+
+Test: Kitap Ekle -> Kitap adı/ISBN ara -> ör. "Harry Potter ve Sırlar Odası" -> Bul.

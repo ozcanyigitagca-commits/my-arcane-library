@@ -507,6 +507,24 @@ async function findBook(){
   }).join(""):'<div class="empty">Sonuç bulunamadı. Kitap adını, yazarı veya ISBN\'yi farklı yazarak tekrar dene.</div>';
  };
  try{
+  // Öncelik: Supabase Edge Function. Böylece tarayıcı CORS/yerel dosya kısıtlarına takılmaz.
+  try{
+   const r=await fetch(SUPABASE_URL+"/functions/v1/book-search",{
+    method:"POST",
+    headers:{"Content-Type":"application/json","apikey":SUPABASE_KEY},
+    body:JSON.stringify({q}),
+    signal:AbortSignal.timeout(12000)
+   });
+   if(r.ok){
+    const j=await r.json();
+    const docs=Array.isArray(j?.docs)?j.docs:[];
+    const items=Array.isArray(j?.items)?j.items:[];
+    if(docs.length){renderResults(docs);return;}
+    if(items.length){renderResults(items);return;}
+   }
+  }catch(e){console.warn("Supabase book-search başarısız:",e)}
+
+  // İkinci kademe: doğrudan servisler / proxyler.
   try{
    const ol=await searchBookApi("https://openlibrary.org/search.json?q="+encodeURIComponent(q)+"&limit=10&fields=title,author_name,cover_i,number_of_pages_median,isbn,first_publish_year");
    const docs=Array.isArray(ol?.docs)?ol.docs:[];
@@ -514,10 +532,10 @@ async function findBook(){
   }catch(e){console.warn("Open Library araması başarısız:",e)}
   try{
    const gb=await searchBookApi("https://www.googleapis.com/books/v1/volumes?q="+encodeURIComponent(q)+"&maxResults=10&printType=books");
-   const items=(gb?.items||[]).map(v=>{const x=v.volumeInfo||{};return {title:x.title||"",author_name:x.authors||[],pages:x.pageCount||0,year:x.publishedDate||"",cover:x.imageLinks?.thumbnail||x.imageLinks?.smallThumbnail||"",isbn:(x.industryIdentifiers||[]).map(z=>z.identifier),cover_i:0}}).filter(x=>x.title);
+   const items=(gb?.items||[]).map(v=>{const x=v.volumeInfo||{};return {title:x.title||"",author_name:x.authors||[],pages:x.pageCount||0,year:x.publishedDate||"",cover:x.imageLinks?.thumbnail||x.imageLinks?.smallThumbnail||"",isbn:(x.industryIdentifiers||[]).map(z=>z.identifier)}}).filter(x=>x.title);
    if(items.length){renderResults(items);return;}
   }catch(e){console.warn("Google Books araması başarısız:",e)}
-  results.innerHTML='<div class="empty">📡 Kitap arama servislerine şu anda ulaşılamıyor.<br><br><small>İnternet bağlantını kontrol et veya kitabın bilgilerini elle doldur.</small></div>';
+  results.innerHTML='<div class="empty">📡 Kitap arama servisine şu anda ulaşılamıyor.<br><br><small>Supabase bağlantısını kontrol et. İstersen kitabın bilgilerini elle de doldurabilirsin.</small></div>';
  }finally{
   if(btn){btn.disabled=false;btn.textContent="🔎 Bul"}
  }
@@ -537,11 +555,11 @@ async function signUp(){if(!db)return $("authMsg").textContent="Önce Supabase U
 async function signIn(){if(!db)return $("authMsg").textContent="Önce Supabase URL/Key tanımlanmalı.";let {error}=await db.auth.signInWithPassword({email:$("authEmail").value.trim(),password:$("authPass").value});$("authMsg").textContent=error?error.message:"Giriş başarılı."}
 async function signOut(){if(db)await db.auth.signOut();else user=null;closeAuth();toast("Çıkış yapıldı")}
 function openSettings(){$("settingsModal").classList.add("open")}function closeSettings(){$("settingsModal").classList.remove("open")}
-function exportData(){let a=document.createElement("a");a.href=URL.createObjectURL(new Blob([JSON.stringify({version:14.6,books,goals},null,2)],{type:"application/json"}));a.download="my-arcane-library-v14.6.json";a.click()}
+function exportData(){let a=document.createElement("a");a.href=URL.createObjectURL(new Blob([JSON.stringify({version:14.7,books,goals},null,2)],{type:"application/json"}));a.download="my-arcane-library-v14.7.json";a.click()}
 function importData(e){let f=e.target.files[0];if(!f)return;let r=new FileReader();r.onload=()=>{try{let x=JSON.parse(r.result);books=x.books||[];goals=x.goals||goals;saveLocal();renderAll();toast("Yedek yüklendi ✓")}catch{alert("Geçersiz JSON")}};r.readAsText(f)}
 fillCats();
 const bookSearchEl=$("bookSearch");if(bookSearchEl)bookSearchEl.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();findBook()}});
 init();
-if("serviceWorker" in navigator){window.addEventListener("load",async()=>{try{const reg=await navigator.serviceWorker.register("sw.js?v=14.6");await reg.update()}catch(e){console.warn("SW:",e)}})}
+if("serviceWorker" in navigator){window.addEventListener("load",async()=>{try{const reg=await navigator.serviceWorker.register("sw.js?v=14.7");await reg.update()}catch(e){console.warn("SW:",e)}})}
 </script>
 </body></html>
