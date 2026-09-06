@@ -101,7 +101,7 @@ button:hover{border-color:#b46cff;box-shadow:0 0 12px rgba(153,78,255,.18)}
 <body>
 <div class="app">
 <aside>
-  <div class="brand"><div class="brandIcon">📖</div><div><h1>My Arcane Library v14.1</h1><small>Sanal Kütüphane</small></div></div>
+  <div class="brand"><div class="brandIcon">📖</div><div><h1>My Arcane Library v14.3</h1><small>Sanal Kütüphane</small></div></div>
   <nav>
     <button class="active" onclick="showSection('home',this)">🏛️ <span>Kütüphane</span></button>
     <button onclick="showSection('books',this)">📚 <span>Kitaplarım</span></button>
@@ -206,7 +206,7 @@ button:hover{border-color:#b46cff;box-shadow:0 0 12px rgba(153,78,255,.18)}
 const SUPABASE_URL="https://khmcgiklbnogsamvqjrj.supabase.co";
 const SUPABASE_KEY="sb_publishable_CB8jHFX4E0TFQ_HVb_9RkQ_grX4Gwi6";
 const CATS=["Klasikler","Roman","Fantastik","Bilim Kurgu","Polisiye","Felsefe","Tarih","Bilim","Biyografi","Çocuk","Diğer"];
-let db=null, user=null, books=[], editId=null, filter="all", goals={monthBooks:3,monthPages:500,yearBooks:24,yearPages:6000}, bookResults=[], friends=[], friendBooks=[], reviewBookId=null;
+let db=null, user=null, books=[], editId=null, filter="all", booksRevision=0, syncInProgress=false, goals={monthBooks:3,monthPages:500,yearBooks:24,yearPages:6000}, bookResults=[], friends=[], friendBooks=[], reviewBookId=null;
 
 const $=id=>document.getElementById(id);
 const SAFE_FETCH_TIMEOUT=8000;
@@ -220,7 +220,13 @@ window.addEventListener("unhandledrejection",e=>console.error(e.reason));
 const esc=s=>String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));
 function toast(s){$("toast").textContent=s;$("toast").style.display="block";clearTimeout(window.tt);window.tt=setTimeout(()=>$("toast").style.display="none",1800)}
 function key(){return user?"arcane_v8_books_"+user.id:"arcane_v8_guest"}
-function saveLocal(){localStorage.setItem(key(),JSON.stringify(books));localStorage.setItem("arcane_v8_goals_"+(user?.id||"guest"),JSON.stringify(goals))}
+function saveLocal(){
+ booksRevision++;
+ const payload=Array.isArray(books)?books.map(b=>({...b,history:Array.isArray(b.history)?b.history.slice():[]})):[];
+ localStorage.setItem(key(),JSON.stringify(payload));
+ localStorage.setItem("arcane_v8_goals_"+(user?.id||"guest"),JSON.stringify(goals));
+ if(user?.id&&payload.length)localStorage.setItem("arcane_last_good_books_"+user.id,JSON.stringify(payload));
+}
 function loadLocal(){try{books=JSON.parse(localStorage.getItem(key())||"[]")}catch{books=[]}try{goals=JSON.parse(localStorage.getItem("arcane_v8_goals_"+(user?.id||"guest"))||JSON.stringify(goals))}catch{}}
 function iso(){return new Date().toISOString()}
 function day(d){let x=new Date(d);return x.toISOString().slice(0,10)}
@@ -235,30 +241,49 @@ async function init(){
  await afterUser(); renderAll();
 }
 let userSyncRun=0;
-async function afterUser(){const run=++userSyncRun;loadLocal();friends=[];friendBooks=[];if(user){$("userName").textContent=user.user_metadata?.name||user.email?.split("@")[0]||"Kütüphaneci";$("userEmail").textContent=user.email;if(db){await pullCloud();if(run!==userSyncRun)return;await loadSocial();}}else{$("userName").textContent="Misafir";$('userEmail').textContent=db?"Giriş yapılmadı":"Yerel mod";renderFriendsEmpty()}renderAll()}
-async function pullCloud(){
+async function afterUser(){
+ const run=++userSyncRun;
+ loadLocal();
+ friends=[];friendBooks=[];
+ if(user){
+  $("userName").textContent=user.user_metadata?.name||user.email?.split("@")[0]||"Kütüphaneci";
+  $("userEmail").textContent=user.email;
+  if(db){await pullCloud(run);if(run!==userSyncRun)return;await loadSocial();}
+ }else{$("userName").textContent="Misafir";$('userEmail').textContent=db?"Giriş yapılmadı":"Yerel mod";renderFriendsEmpty()}
+ renderAll()
+}
+async function pullCloud(runToken=userSyncRun){
  if(!db||!user)return;
- const localBefore=Array.isArray(books)?books.slice():[]; if(localBefore.length)localStorage.setItem('arcane_last_good_books_'+user.id,JSON.stringify(localBefore));
- const {data,error}=await db.from("books").select("*").eq("user_id",user.id).order("updated_at",{ascending:false});
- if(error){console.warn("Cloud kitaplık okunamadı:",error);books=localBefore;return}
- const cloud=(data||[]).map(r=>({id:r.id,title:r.title,author:r.author||"",pages:r.pages||1,read:r.read||0,category:r.category||"Roman",status:r.status||"unread",rating:r.rating||0,cover:r.cover||"",notes:r.notes||"",fav:!!r.fav,history:r.history||[],updated:r.updated_at||iso()}));
- if(!cloud.length&&localBefore.length){
+ syncInProgress=true;
+ const localBefore=Array.isArray(books)?books.map(b=>({...b,history:Array.isArray(b.history)?b.history.slice():[]})):[];
+ const revisionAtStart=booksRevision;
+ if(localBefore.length)localStorage.setItem('arcane_last_good_books_'+user.id,JSON.stringify(localBefore));
+ try{
+  const {data,error}=await db.from("books").select("*").eq("user_id",user.id).order("updated_at",{ascending:false});
+  if(runToken!==userSyncRun||revisionAtStart!==booksRevision)return;
+  if(error){console.warn("Cloud kitaplık okunamadı:",error);books=localBefore;return}
+  const cloud=(data||[]).map(r=>({id:r.id,title:r.title,author:r.author||"",pages:r.pages||1,read:r.read||0,category:r.category||"Roman",status:r.status||"unread",rating:r.rating||0,cover:r.cover||"",notes:r.notes||"",fav:!!r.fav,history:r.history||[],updated:r.updated_at||iso()}));
+  if(!cloud.length&&localBefore.length){
    books=localBefore;
-   for(const b of localBefore){try{await cloudUpsert(b)}catch(e){console.warn("Cloud yedekleme başarısız:",e)}}
-   saveLocal();
+   for(const b of localBefore){if(runToken!==userSyncRun||revisionAtStart!==booksRevision)return;try{await cloudUpsert(b)}catch(e){console.warn("Cloud yedekleme başarısız:",e)}}
+   if(runToken===userSyncRun&&revisionAtStart===booksRevision)saveLocal();
    return;
- }
- if(!cloud.length&&!localBefore.length){
-   try{const backup=JSON.parse(localStorage.getItem('arcane_last_good_books_'+user.id)||'[]');if(Array.isArray(backup)&&backup.length){books=backup;for(const b of backup){try{await cloudUpsert(b)}catch(e){}}saveLocal();return}}catch{}
- }
- const byId=new Map(cloud.map(b=>[b.id,b]));
- for(const local of localBefore){
+  }
+  if(!cloud.length&&!localBefore.length){
+   try{const backup=JSON.parse(localStorage.getItem('arcane_last_good_books_'+user.id)||'[]');if(Array.isArray(backup)&&backup.length){books=backup;for(const b of backup){try{await cloudUpsert(b)}catch(e){}}if(runToken===userSyncRun&&revisionAtStart===booksRevision)saveLocal();return}}catch{}
+  }
+  const byId=new Map(cloud.map(b=>[b.id,b]));
+  for(const local of localBefore){
+   if(runToken!==userSyncRun||revisionAtStart!==booksRevision)return;
    const remote=byId.get(local.id);
    if(!remote){byId.set(local.id,local);try{await cloudUpsert(local)}catch(e){console.warn(e)}}
    else if(new Date(local.updated||0)>new Date(remote.updated||0)){byId.set(local.id,local);try{await cloudUpsert(local)}catch(e){console.warn(e)}}
- }
- books=[...byId.values()].sort((a,b)=>new Date(b.updated||0)-new Date(a.updated||0));
- saveLocal();
+  }
+  if(runToken!==userSyncRun||revisionAtStart!==booksRevision)return;
+  books=[...byId.values()].sort((a,b)=>new Date(b.updated||0)-new Date(a.updated||0));
+  const beforeSaveRevision=booksRevision;
+  if(runToken===userSyncRun&&beforeSaveRevision===booksRevision)saveLocal();
+ }finally{syncInProgress=false}
 }
 async function cloudUpsert(b){if(!db||!user)return {error:null};return await db.from("books").upsert({id:b.id,user_id:user.id,title:b.title,author:b.author,pages:b.pages,read:b.read,category:b.category,status:b.status,rating:b.rating,cover:b.cover,notes:b.notes,fav:b.fav,history:b.history||[],updated_at:b.updated})}
 async function cloudDelete(id){if(!db||!user)return {error:null};return await db.from("books").delete().eq("id",id).eq("user_id",user.id)}
@@ -395,7 +420,15 @@ async function deleteBook(id){if(!confirm("Kitap silinsin mi?"))return;const rem
 async function quickReadFor(id,n){let b=books.find(x=>x.id===id);if(!b)return;let old=b.read;b.read=Math.min(b.pages,b.read+n);b.status=b.read===b.pages?"finished":"reading";b.updated=iso();if(b.read>old)b.history=[...(b.history||[]),{date:b.updated,pages:b.read-old}];saveLocal();await cloudUpsert(b);closeDetail();renderAll();toast(`+${b.read-old} sayfa kaydedildi 📖`)}
 async function quickRead(n){let b=books.find(x=>x.status==="reading")||books.find(x=>x.status==="unread");if(!b)return alert("Önce bir kitap ekle.");await quickReadFor(b.id,n)}
 function openGoals(){$("gmB").value=goals.monthBooks;$("gmP").value=goals.monthPages;$("gyB").value=goals.yearBooks;$("gyP").value=goals.yearPages;$("goalModal").classList.add("open")}function closeGoals(){$("goalModal").classList.remove("open")}function saveGoals(){goals={monthBooks:+$("gmB").value||0,monthPages:+$("gmP").value||0,yearBooks:+$("gyB").value||0,yearPages:+$("gyP").value||0};saveLocal();closeGoals();renderGoals();toast("Hedefler kaydedildi 🎯")}
-function showSection(s,btn){["home","books","recommend","film","history","stats","friends","ai"].forEach(x=>$(x+"Section").style.display=x===s?"block":"none");document.querySelectorAll("nav button").forEach(x=>x.classList.remove("active"));if(btn)btn.classList.add("active");if(s==="history")showHistory();if(s==="stats")renderAdvancedStats();if(s==="friends")loadSocial();if(s==="ai")renderAIProfileLocal()}
+function showSection(s,btn){
+ ["home","books","recommend","film","history","stats","friends","ai"].forEach(x=>{const el=$(x+"Section");if(el)el.style.display=x===s?"block":"none"});
+ document.querySelectorAll("nav button").forEach(x=>x.classList.remove("active"));
+ if(btn)btn.classList.add("active");
+ if(s==="home"||s==="books")renderBooks();
+ if(s==="stats")renderAdvancedStats();
+ if(s==="friends")loadSocial();
+ if(s==="ai")renderAIProfileLocal();
+}
 function showStats(){showSection("stats")}
 function showFriends(){showSection("friends")}
 function showAI(){showSection("ai")}
@@ -412,7 +445,11 @@ async function aiRecommendations(){if(!user||!db)return addAIMsg("Önce çevrimi
 function renderAIRecommendations(items){let have=new Set(books.map(b=>b.title.toLowerCase()));let arr=(items||[]).filter(x=>x.title&&!have.has(String(x.title).toLowerCase())).slice(0,5);$("aiRecommendations").innerHTML=arr.length?'<h4 class="gold">📚 Sana Özel 5 Öneri</h4>'+arr.map((x,i)=>`<div class="aiCard">${x.cover?`<img src="${esc(x.cover)}">`:'<div style="font-size:28px">📖</div>'}<div><b>${esc(x.title)}</b><br><small>${esc(x.author||'')}</small><p class="muted" style="margin:4px 0">${esc(x.reason||'Kütüphanendeki zevklerine uygun.')}</p><button onclick="addRec(${JSON.stringify(x.title).replace(/"/g,'&quot;')},${JSON.stringify(x.author||'').replace(/"/g,'&quot;')},${JSON.stringify(x.cover||'').replace(/"/g,'&quot;')})">＋ Rafa koy</button></div></div>`).join(''):'<div class="muted">Yeni öneri bulunamadı.</div>'}
 function renderAIProfileLocal(){let total=books.length;if(!$("aiProfile"))return;if(!total){$("aiProfile").innerHTML='<b>🔮 Kütüphaneci içgörüsü</b><p class="muted">Önce birkaç kitap ekle; sonra zevk profilini çıkarabiliriz.</p>';return}let rated=books.filter(b=>+b.rating>0),avg=rated.length?(rated.reduce((n,b)=>n+(+b.rating),0)/rated.length).toFixed(1):'—',cats={};books.forEach(b=>cats[b.category]=(cats[b.category]||0)+1);let top=Object.entries(cats).sort((a,b)=>b[1]-a[1])[0];$("aiProfile").innerHTML=`<b>🔮 Kütüphaneci içgörüsü</b><p>Şu anda <b>${total}</b> kitaplık bir arşivin var. ${top?`En baskın rafın <b>${esc(top[0])}</b> (${top[1]} kitap).`:''} ${rated.length?`Puanladığın kitaplarda ortalaman <b>${avg}/10</b>.`:''}</p>`}
 function showRecommendations(){showSection("recommend");renderRecs()}
-function showHistory(){showSection("history");let arr=books.flatMap(b=>(b.history||[]).map(h=>({title:b.title,...h}))).sort((a,b)=>new Date(b.date)-new Date(a.date));$("historyList").innerHTML=arr.length?arr.map(x=>`<div class="panel" style="margin:8px 0"><b>${esc(x.title)}</b> · +${x.pages} sayfa <span class="muted">${new Date(x.date).toLocaleString("tr-TR")}</span></div>`).join(""):"<div class='empty'>Henüz okuma kaydı yok.</div>"}
+function showHistory(){
+ showSection("history");
+ let arr=books.flatMap(b=>(b.history||[]).map(h=>({title:b.title,...h}))).sort((a,b)=>new Date(b.date)-new Date(a.date));
+ $("historyList").innerHTML=arr.length?arr.map(x=>`<div class="panel" style="margin:8px 0"><b>${esc(x.title)}</b> · +${x.pages} sayfa <span class="muted">${new Date(x.date).toLocaleString("tr-TR")}</span></div>`).join(""):"<div class='empty'>Henüz okuma kaydı yok.</div>"
+}
 function renderFriendsEmpty(){if($("myFriendCode"))$("myFriendCode").textContent=user?"Yükleniyor…":"Giriş yapmalısın";if($("friendsList"))$("friendsList").innerHTML='<div class="empty">Arkadaşlarını görmek için giriş yap.</div>';if($("friendRequests"))$("friendRequests").innerHTML="";if($("friendSelect"))$("friendSelect").innerHTML='<option value="">Arkadaş seç</option>';if($("friendBooks"))$("friendBooks").innerHTML='<div class="empty">Bir arkadaş seçerek kitaplarını gör.</div>'}
 async function loadSocial(){if(!db||!user){renderFriendsEmpty();return}try{let prof=await db.from("profiles").select("display_name,friend_code").eq("id",user.id).maybeSingle();if(prof.data){$("myFriendCode").textContent=prof.data.friend_code;$("userName").textContent=prof.data.display_name||user.user_metadata?.name||user.email.split("@")[0]}
  let rq=await db.from("friend_requests").select("id,requester_id,addressee_id,status,created_at").or(`requester_id.eq.${user.id},addressee_id.eq.${user.id}`).order("created_at",{ascending:false});let rows=rq.data||[];let ids=[...new Set(rows.flatMap(r=>[r.requester_id,r.addressee_id]).filter(id=>id!==user.id))];let pm=ids.length?await db.from("profiles").select("id,display_name,friend_code").in("id",ids):{data:[]};let pmap=Object.fromEntries((pm.data||[]).map(p=>[p.id,p]));let accepted=rows.filter(r=>r.status==="accepted");friends=accepted.map(r=>{let id=r.requester_id===user.id?r.addressee_id:r.requester_id;let p=pmap[id]||{};return{id,name:p.display_name||"Kütüphaneci",code:p.friend_code||""}});renderFriendRequests(rows.filter(r=>r.status==="pending"),pmap);renderFriendsList();renderFriendSelect();}catch(e){toast("Arkadaşlık verileri yüklenemedi")}}
@@ -447,6 +484,6 @@ function openSettings(){$("settingsModal").classList.add("open")}function closeS
 function exportData(){let a=document.createElement("a");a.href=URL.createObjectURL(new Blob([JSON.stringify({version:14.1,books,goals},null,2)],{type:"application/json"}));a.download="my-arcane-library-v14.1.json";a.click()}
 function importData(e){let f=e.target.files[0];if(!f)return;let r=new FileReader();r.onload=()=>{try{let x=JSON.parse(r.result);books=x.books||[];goals=x.goals||goals;saveLocal();renderAll();toast("Yedek yüklendi ✓")}catch{alert("Geçersiz JSON")}};r.readAsText(f)}
 fillCats();init();
-if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}))}
+if("serviceWorker" in navigator){window.addEventListener("load",async()=>{try{const reg=await navigator.serviceWorker.register("sw.js?v=14.3");await reg.update()}catch(e){console.warn("SW:",e)}})}
 </script>
 </body></html>
