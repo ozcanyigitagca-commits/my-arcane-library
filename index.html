@@ -101,7 +101,7 @@ button:hover{border-color:#b46cff;box-shadow:0 0 12px rgba(153,78,255,.18)}
 <body>
 <div class="app">
 <aside>
-  <div class="brand"><div class="brandIcon">📖</div><div><h1>My Arcane Library v14.4</h1><small>Sanal Kütüphane</small></div></div>
+  <div class="brand"><div class="brandIcon">📖</div><div><h1>My Arcane Library v14.6</h1><small>Sanal Kütüphane</small></div></div>
   <nav>
     <button class="active" onclick="showSection('home',this)">🏛️ <span>Kütüphane</span></button>
     <button onclick="showSection('books',this)">📚 <span>Kitaplarım</span></button>
@@ -214,6 +214,22 @@ async function safeJson(url,ms=SAFE_FETCH_TIMEOUT){
  const c=new AbortController(),t=setTimeout(()=>c.abort(),ms);
  try{const r=await fetch(url,{signal:c.signal,headers:{Accept:"application/json"}});if(!r.ok)throw new Error("HTTP "+r.status);return await r.json()}
  finally{clearTimeout(t)}
+}
+async function searchBookApi(url,ms=SAFE_FETCH_TIMEOUT){
+ const proxies=[
+  "https://api.allorigins.win/get?url="+encodeURIComponent(url),
+  "https://corsproxy.io/?url="+encodeURIComponent(url)
+ ];
+ let last=null;
+ try{return await safeJson(url,ms)}catch(e){last=e}
+ for(const proxy of proxies){
+  try{
+   const wrapped=await safeJson(proxy,ms);
+   if(wrapped&&typeof wrapped.contents==="string")return JSON.parse(wrapped.contents);
+   if(wrapped&&typeof wrapped==="object"&&wrapped.items) return wrapped;
+  }catch(e){last=e}
+ }
+ throw last||new Error("Kitap arama servisi kullanılamıyor");
 }
 window.addEventListener("error",e=>{console.error(e.error||e.message)});
 window.addEventListener("unhandledrejection",e=>console.error(e.reason));
@@ -492,12 +508,12 @@ async function findBook(){
  };
  try{
   try{
-   const ol=await safeJson("https://openlibrary.org/search.json?title="+encodeURIComponent(q)+"&limit=10&fields=title,author_name,cover_i,number_of_pages_median,isbn,first_publish_year");
+   const ol=await searchBookApi("https://openlibrary.org/search.json?q="+encodeURIComponent(q)+"&limit=10&fields=title,author_name,cover_i,number_of_pages_median,isbn,first_publish_year");
    const docs=Array.isArray(ol?.docs)?ol.docs:[];
    if(docs.length){renderResults(docs);return;}
   }catch(e){console.warn("Open Library araması başarısız:",e)}
   try{
-   const gb=await safeJson("https://www.googleapis.com/books/v1/volumes?q="+encodeURIComponent(q)+"&maxResults=10&printType=books");
+   const gb=await searchBookApi("https://www.googleapis.com/books/v1/volumes?q="+encodeURIComponent(q)+"&maxResults=10&printType=books");
    const items=(gb?.items||[]).map(v=>{const x=v.volumeInfo||{};return {title:x.title||"",author_name:x.authors||[],pages:x.pageCount||0,year:x.publishedDate||"",cover:x.imageLinks?.thumbnail||x.imageLinks?.smallThumbnail||"",isbn:(x.industryIdentifiers||[]).map(z=>z.identifier),cover_i:0}}).filter(x=>x.title);
    if(items.length){renderResults(items);return;}
   }catch(e){console.warn("Google Books araması başarısız:",e)}
@@ -521,11 +537,11 @@ async function signUp(){if(!db)return $("authMsg").textContent="Önce Supabase U
 async function signIn(){if(!db)return $("authMsg").textContent="Önce Supabase URL/Key tanımlanmalı.";let {error}=await db.auth.signInWithPassword({email:$("authEmail").value.trim(),password:$("authPass").value});$("authMsg").textContent=error?error.message:"Giriş başarılı."}
 async function signOut(){if(db)await db.auth.signOut();else user=null;closeAuth();toast("Çıkış yapıldı")}
 function openSettings(){$("settingsModal").classList.add("open")}function closeSettings(){$("settingsModal").classList.remove("open")}
-function exportData(){let a=document.createElement("a");a.href=URL.createObjectURL(new Blob([JSON.stringify({version:14.4,books,goals},null,2)],{type:"application/json"}));a.download="my-arcane-library-v14.4.json";a.click()}
+function exportData(){let a=document.createElement("a");a.href=URL.createObjectURL(new Blob([JSON.stringify({version:14.6,books,goals},null,2)],{type:"application/json"}));a.download="my-arcane-library-v14.6.json";a.click()}
 function importData(e){let f=e.target.files[0];if(!f)return;let r=new FileReader();r.onload=()=>{try{let x=JSON.parse(r.result);books=x.books||[];goals=x.goals||goals;saveLocal();renderAll();toast("Yedek yüklendi ✓")}catch{alert("Geçersiz JSON")}};r.readAsText(f)}
 fillCats();
 const bookSearchEl=$("bookSearch");if(bookSearchEl)bookSearchEl.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();findBook()}});
 init();
-if("serviceWorker" in navigator){window.addEventListener("load",async()=>{try{const reg=await navigator.serviceWorker.register("sw.js?v=14.4");await reg.update()}catch(e){console.warn("SW:",e)}})}
+if("serviceWorker" in navigator){window.addEventListener("load",async()=>{try{const reg=await navigator.serviceWorker.register("sw.js?v=14.6");await reg.update()}catch(e){console.warn("SW:",e)}})}
 </script>
 </body></html>
