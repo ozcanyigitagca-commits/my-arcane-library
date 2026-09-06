@@ -101,7 +101,7 @@ button:hover{border-color:#b46cff;box-shadow:0 0 12px rgba(153,78,255,.18)}
 <body>
 <div class="app">
 <aside>
-  <div class="brand"><div class="brandIcon">📖</div><div><h1>My Arcane Library v14.3</h1><small>Sanal Kütüphane</small></div></div>
+  <div class="brand"><div class="brandIcon">📖</div><div><h1>My Arcane Library v14.4</h1><small>Sanal Kütüphane</small></div></div>
   <nav>
     <button class="active" onclick="showSection('home',this)">🏛️ <span>Kütüphane</span></button>
     <button onclick="showSection('books',this)">📚 <span>Kitaplarım</span></button>
@@ -188,7 +188,7 @@ button:hover{border-color:#b46cff;box-shadow:0 0 12px rgba(153,78,255,.18)}
 
 <!-- Add/Edit -->
 <div class="modal" id="bookModal"><div class="box"><h2 class="gold" id="bookModalTitle">📖 Kitap Ekle</h2><div class="form">
-<label>Kitap adı</label><input id="fTitle"><label>Yazar</label><input id="fAuthor"><label>Toplam sayfa</label><input id="fPages" type="number" min="1"><label>Okunan sayfa</label><input id="fRead" type="number" min="0" value="0"><label>Kategori</label><select id="fCategory"></select><label>Durum</label><select id="fStatus"><option value="unread">Okuyacağım</option><option value="reading">Okuyorum</option><option value="finished">Okudum</option></select><label>⭐ Puan</label><input id="fRating" type="number" min="0" max="10" step=".5" value="0"><label>Kapak URL</label><input id="fCover" placeholder="Otomatik arama yapabilir veya boş bırakabilirsin"><label>Not</label><textarea id="fNotes" rows="3"></textarea><hr style="border-color:#382715"><div><input id="bookSearch" placeholder="Kitap adı / ISBN ile kapak ve bilgi bul" style="width:70%"><button onclick="findBook()">🔎 Bul</button></div><div id="results"></div></div><div class="modalActions"><button onclick="closeBook()">İptal</button><button class="primary" onclick="saveBook()">Kaydet</button></div></div></div>
+<label>Kitap adı</label><input id="fTitle"><label>Yazar</label><input id="fAuthor"><label>Toplam sayfa</label><input id="fPages" type="number" min="1"><label>Okunan sayfa</label><input id="fRead" type="number" min="0" value="0"><label>Kategori</label><select id="fCategory"></select><label>Durum</label><select id="fStatus"><option value="unread">Okuyacağım</option><option value="reading">Okuyorum</option><option value="finished">Okudum</option></select><label>⭐ Puan</label><input id="fRating" type="number" min="0" max="10" step=".5" value="0"><label>Kapak URL</label><input id="fCover" placeholder="Otomatik arama yapabilir veya boş bırakabilirsin"><label>Not</label><textarea id="fNotes" rows="3"></textarea><hr style="border-color:#382715"><div><input id="bookSearch" placeholder="Kitap adı / ISBN ile kapak ve bilgi bul" style="width:70%"><button type="button" id="findBookBtn" onclick="findBook()">🔎 Bul</button></div><div id="results"></div></div><div class="modalActions"><button onclick="closeBook()">İptal</button><button class="primary" onclick="saveBook()">Kaydet</button></div></div></div>
 
 <div class="modal" id="authModal"><div class="box"><h2 class="gold">👤 Çevrimiçi Hesap</h2><p class="muted">Hesap açarsan kitapların ve okuma geçmişin cihazlar arasında senkronize edilir.</p><div class="form"><label>E-posta</label><input id="authEmail" type="email"><label>Şifre</label><input id="authPass" type="password"><label>Ad</label><input id="authName" placeholder="Kütüphaneci adın"></div><div class="modalActions"><button onclick="closeAuth()">Kapat</button><button onclick="signUp()">Kayıt Ol</button><button class="primary" onclick="signIn()">Giriş Yap</button><button onclick="signOut()">Çıkış</button></div><div id="authMsg" class="muted" style="margin-top:10px"></div></div></div>
 
@@ -470,20 +470,62 @@ async function saveReview(){if(!reviewBookId||!user)return;let rating=Math.max(0
 function renderAdvancedStats(){let total=books.length,fin=books.filter(b=>b.status==='finished').length,reading=books.filter(b=>b.status==='reading').length,pg=pagesRead(),rated=books.filter(b=>+b.rating>0),avg=rated.length?(rated.reduce((n,b)=>n+(+b.rating),0)/rated.length).toFixed(1):'0';$('sTotal').textContent=total;$('sFinished').textContent=fin;$('sReading').textContent=reading;$('sPages').textContent=pg.toLocaleString('tr-TR');$('sAvg').textContent=avg;$('sRate').textContent=(total?Math.round(fin/total*100):0)+'%';let cats={};books.forEach(b=>cats[b.category||'Diğer']=(cats[b.category||'Diğer']||0)+1);$('genreStats').innerHTML=Object.entries(cats).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`<div class="statRow"><div class="statRowTop"><span>${esc(k)}</span><b>${v}</b></div><div class="miniBar"><i style="width:${total?v/total*100:0}%"></i></div></div>`).join('')||'<div class="muted">Henüz veri yok.</div>';let ds=[];for(let i=13;i>=0;i--){let d=new Date();d.setHours(0,0,0,0);d.setDate(d.getDate()-i);let key=day(d),n=books.flatMap(b=>b.history||[]).filter(h=>day(h.date)===key).reduce((a,h)=>a+(+h.pages||0),0);ds.push({key,n})}let max=Math.max(1,...ds.map(x=>x.n));$('dailyStats').innerHTML=ds.map(x=>`<div class="statRow"><div class="statRowTop"><span>${x.key.slice(5)}</span><b>${x.n} sf</b></div><div class="miniBar"><i style="width:${x.n/max*100}%"></i></div></div>`).join('');let tops=[...rated].sort((a,b)=>(+b.rating)-(+a.rating)).slice(0,5);$('topRated').innerHTML=tops.length?tops.map(b=>`<div class="statRow"><b>${esc(b.title)}</b><br><span class="stars">${'★'.repeat(Math.round(b.rating/2))}${'☆'.repeat(5-Math.round(b.rating/2))}</span> <small>${b.rating}/10</small></div>`).join(''):'<div class="muted">Henüz puanlanmış kitap yok.</div>'}
 
 async function findBook(){
- let q=$("bookSearch").value.trim()||$("fTitle").value.trim();if(!q)return;
- $("results").innerHTML='<span class="muted">🔎 Kitap aranıyor…</span>';
- try{const d=await safeJson("https://openlibrary.org/search.json?q="+encodeURIComponent(q)+"&limit=8&fields=title,author_name,cover_i,number_of_pages_median,isbn,first_publish_year");bookResults=d.docs||[];
-  $("results").innerHTML=bookResults.length?bookResults.map((b,i)=>{let c=b.cover_i?`https://covers.openlibrary.org/b/id/${b.cover_i}-M.jpg`:"";return `<div class="result" onclick="chooseResult(${i})">${c?`<img src="${c}">`:"📖"}<div><b>${esc(b.title)}</b><br><span class="muted">${esc((b.author_name||[]).join(", "))}</span><br><span class="muted">${b.first_publish_year||""} · ${b.number_of_pages_median||"?"} sayfa</span></div><span>Seç</span></div>`}).join(""):'<div class="empty">Sonuç bulunamadı. Kitap adını farklı yazarak tekrar deneyebilirsin.</div>'
- }catch(e){bookResults=[];$("results").innerHTML='<div class="empty">📡 Kitap veri servisine ulaşılamadı. Kitabı bilgilerini elle girerek de ekleyebilirsin.</div>';console.warn(e)}}
-function chooseResult(i){let b=bookResults[i];$("fTitle").value=b.title||"";$("fAuthor").value=(b.author_name||[])[0]||"";$("fPages").value=b.number_of_pages_median||300;$("fCover").value=b.cover_i?`https://covers.openlibrary.org/b/id/${b.cover_i}-L.jpg`:"";$("results").innerHTML='<span class="muted">✓ Kitap bilgileri seçildi</span>'}
+ const input=$("bookSearch"), results=$("results"), btn=$("findBookBtn");
+ const q=(input?.value||$("fTitle")?.value||"").trim();
+ if(!q){
+  results.innerHTML='<div class="empty">🔎 Önce kitap adı, yazar adı veya ISBN gir.</div>';
+  input?.focus();
+  return;
+ }
+ if(btn){btn.disabled=true;btn.textContent="⏳ Aranıyor…";}
+ results.innerHTML='<span class="muted">🔎 Kitap aranıyor…</span>';
+ bookResults=[];
+ const renderResults=(items)=>{
+  bookResults=items.slice(0,10);
+  results.innerHTML=bookResults.length?bookResults.map((b,i)=>{
+   const c=b.cover_i?`https://covers.openlibrary.org/b/id/${b.cover_i}-M.jpg`:((b.cover||"")?b.cover:"");
+   const author=(b.author_name||[]).join(", ")||b.author||"Yazar bilinmiyor";
+   const pages=b.number_of_pages_median||b.pages||"?";
+   const year=b.first_publish_year||b.year||"";
+   return `<div class="result" role="button" tabindex="0" onclick="chooseResult(${i})" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();chooseResult(${i})}">${c?`<img src="${esc(c)}" onerror="this.style.display='none'">`:'<div style="font-size:38px;text-align:center">📖</div>'}<div><b>${esc(b.title)}</b><br><span class="muted">${esc(author)}</span><br><span class="muted">${esc(String(year))}${year?' · ':''}${esc(String(pages))} sayfa</span></div><span>Seç</span></div>`
+  }).join(""):'<div class="empty">Sonuç bulunamadı. Kitap adını, yazarı veya ISBN\'yi farklı yazarak tekrar dene.</div>';
+ };
+ try{
+  try{
+   const ol=await safeJson("https://openlibrary.org/search.json?title="+encodeURIComponent(q)+"&limit=10&fields=title,author_name,cover_i,number_of_pages_median,isbn,first_publish_year");
+   const docs=Array.isArray(ol?.docs)?ol.docs:[];
+   if(docs.length){renderResults(docs);return;}
+  }catch(e){console.warn("Open Library araması başarısız:",e)}
+  try{
+   const gb=await safeJson("https://www.googleapis.com/books/v1/volumes?q="+encodeURIComponent(q)+"&maxResults=10&printType=books");
+   const items=(gb?.items||[]).map(v=>{const x=v.volumeInfo||{};return {title:x.title||"",author_name:x.authors||[],pages:x.pageCount||0,year:x.publishedDate||"",cover:x.imageLinks?.thumbnail||x.imageLinks?.smallThumbnail||"",isbn:(x.industryIdentifiers||[]).map(z=>z.identifier),cover_i:0}}).filter(x=>x.title);
+   if(items.length){renderResults(items);return;}
+  }catch(e){console.warn("Google Books araması başarısız:",e)}
+  results.innerHTML='<div class="empty">📡 Kitap arama servislerine şu anda ulaşılamıyor.<br><br><small>İnternet bağlantını kontrol et veya kitabın bilgilerini elle doldur.</small></div>';
+ }finally{
+  if(btn){btn.disabled=false;btn.textContent="🔎 Bul"}
+ }
+}
+function chooseResult(i){
+ const b=bookResults[i];
+ if(!b)return;
+ $("fTitle").value=b.title||"";
+ $("fAuthor").value=(b.author_name||[])[0]||b.author||"";
+ $("fPages").value=b.number_of_pages_median||b.pages||300;
+ const cover=b.cover_i?`https://covers.openlibrary.org/b/id/${b.cover_i}-L.jpg`:(b.cover||"");
+ $("fCover").value=cover;
+ $("results").innerHTML='<span class="muted">✓ Kitap bilgileri seçildi — şimdi Kaydet\'e basabilirsin.</span>';
+}
 function openAuth(){$("authMsg").textContent="";$("authModal").classList.add("open")}function closeAuth(){$("authModal").classList.remove("open")}
 async function signUp(){if(!db)return $("authMsg").textContent="Önce Supabase URL/Key tanımlanmalı.";let e=$("authEmail").value.trim(),p=$("authPass").value,n=$("authName").value.trim();let {error}=await db.auth.signUp({email:e,password:p,options:{data:{name:n}}});$("authMsg").textContent=error?error.message:"Kayıt başarılı. E-posta doğrulaması gerekiyorsa gelen kutunu kontrol et."}
 async function signIn(){if(!db)return $("authMsg").textContent="Önce Supabase URL/Key tanımlanmalı.";let {error}=await db.auth.signInWithPassword({email:$("authEmail").value.trim(),password:$("authPass").value});$("authMsg").textContent=error?error.message:"Giriş başarılı."}
 async function signOut(){if(db)await db.auth.signOut();else user=null;closeAuth();toast("Çıkış yapıldı")}
 function openSettings(){$("settingsModal").classList.add("open")}function closeSettings(){$("settingsModal").classList.remove("open")}
-function exportData(){let a=document.createElement("a");a.href=URL.createObjectURL(new Blob([JSON.stringify({version:14.1,books,goals},null,2)],{type:"application/json"}));a.download="my-arcane-library-v14.1.json";a.click()}
+function exportData(){let a=document.createElement("a");a.href=URL.createObjectURL(new Blob([JSON.stringify({version:14.4,books,goals},null,2)],{type:"application/json"}));a.download="my-arcane-library-v14.4.json";a.click()}
 function importData(e){let f=e.target.files[0];if(!f)return;let r=new FileReader();r.onload=()=>{try{let x=JSON.parse(r.result);books=x.books||[];goals=x.goals||goals;saveLocal();renderAll();toast("Yedek yüklendi ✓")}catch{alert("Geçersiz JSON")}};r.readAsText(f)}
-fillCats();init();
-if("serviceWorker" in navigator){window.addEventListener("load",async()=>{try{const reg=await navigator.serviceWorker.register("sw.js?v=14.3");await reg.update()}catch(e){console.warn("SW:",e)}})}
+fillCats();
+const bookSearchEl=$("bookSearch");if(bookSearchEl)bookSearchEl.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();findBook()}});
+init();
+if("serviceWorker" in navigator){window.addEventListener("load",async()=>{try{const reg=await navigator.serviceWorker.register("sw.js?v=14.4");await reg.update()}catch(e){console.warn("SW:",e)}})}
 </script>
 </body></html>
